@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, varchar, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -16,6 +16,24 @@ export const users = pgTable("users", {
   documentNumber: text("document_number").unique(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Company Settings table
+export const companySettings = pgTable("company_settings", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  nit: text("nit").notNull(),
+  address: text("address").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email").notNull(),
+  website: text("website"),
+  logo: text("logo"), // URL or path to the logo file
+  invoiceFooter: text("invoice_footer"),
+  invoiceNotes: text("invoice_notes"),
+  bankInfo: jsonb("bank_info"), // JSON with bank account details
+  electronicInvoiceSettings: jsonb("electronic_invoice_settings"), // JSON with electronic invoice settings
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Clients table

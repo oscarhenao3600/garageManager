@@ -11,8 +11,24 @@ export default function Billing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
 
-  const { data: invoices = [], isLoading } = useQuery({
+  const { data: invoices = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/invoices', { status: statusFilter }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter) params.append("status", statusFilter);
+      
+      const response = await fetch(`/api/invoices?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al cargar las facturas");
+      }
+
+      return response.json();
+    },
   });
 
   const getStatusColor = (status: string) => {
@@ -43,6 +59,64 @@ export default function Billing() {
 
   const isOverdue = (dueDate: string) => {
     return new Date(dueDate) < new Date();
+  };
+
+  const handleUpdateStatus = async (id: number, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/invoices/${id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al actualizar el estado");
+      }
+
+      refetch();
+    } catch (error) {
+      console.error("Error al actualizar el estado:", error);
+    }
+  };
+
+  const handleGeneratePDF = async (id: number) => {
+    try {
+      const response = await fetch(`/api/invoices/${id}/pdf`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al generar el PDF");
+      }
+
+      // Aquí se podría manejar la descarga del PDF
+    } catch (error) {
+      console.error("Error al generar el PDF:", error);
+    }
+  };
+
+  const handleSendInvoice = async (id: number) => {
+    try {
+      const response = await fetch(`/api/invoices/${id}/send`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al enviar la factura");
+      }
+
+      // Mostrar mensaje de éxito
+    } catch (error) {
+      console.error("Error al enviar la factura:", error);
+    }
   };
 
   const filteredInvoices = invoices.filter((invoice: any) => {
@@ -272,14 +346,32 @@ export default function Billing() {
                   </div>
                   
                   <div className="flex flex-col space-y-2 ml-4">
-                    <Button variant="outline" size="sm">
-                      <Eye className="w-4 h-4 mr-2" />
-                      Ver
-                    </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleGeneratePDF(invoice.id)}
+                    >
                       <Download className="w-4 h-4 mr-2" />
                       PDF
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleSendInvoice(invoice.id)}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Enviar
+                    </Button>
+                    {invoice.status === 'pending' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleUpdateStatus(invoice.id, 'paid')}
+                      >
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Marcar como pagada
+                      </Button>
+                    )}
                     {invoice.status === 'pending' && (
                       <Button size="sm" className="bg-green-600 hover:bg-green-700">
                         Marcar Pagada

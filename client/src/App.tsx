@@ -13,6 +13,7 @@ import Inventory from "@/pages/inventory";
 import Workers from "@/pages/workers";
 import Billing from "@/pages/billing";
 import Notifications from "@/pages/notifications";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
@@ -57,6 +58,7 @@ function Router() {
         <Route path="/workers" component={Workers} />
         <Route path="/billing" component={Billing} />
         <Route path="/notifications" component={Notifications} />
+        <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>

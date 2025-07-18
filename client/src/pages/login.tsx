@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Wrench } from "lucide-react";
+import { RegisterForm } from "@/components/auth/register-form";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Usuario requerido"),
@@ -105,6 +106,21 @@ export default function Login() {
                 </Button>
               </form>
             </Form>
+            <div className="mt-4 text-center">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-muted-foreground">
+                    O crea una cuenta nueva
+                  </span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <RegisterForm />
+              </div>
+            </div>
           </CardContent>
         </Card>
 

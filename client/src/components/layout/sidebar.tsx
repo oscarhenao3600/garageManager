@@ -16,7 +16,25 @@ import {
   Wrench
 } from "lucide-react";
 
-const menuItems = [
+interface StatsSection {
+  pending?: number;
+  lowStock?: number;
+}
+
+interface DashboardStats {
+  orders: StatsSection;
+  inventory: StatsSection;
+}
+
+interface MenuItem {
+  path: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: string;
+  role?: string;
+}
+
+const menuItems: MenuItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/orders", label: "Órdenes de Servicio", icon: ClipboardList, badge: "orders.pending" },
   { path: "/clients", label: "Clientes", icon: Users },
@@ -25,26 +43,28 @@ const menuItems = [
   { path: "/workers", label: "Operarios", icon: HardHat },
   { path: "/billing", label: "Facturación", icon: FileText },
   { path: "/notifications", label: "Notificaciones", icon: Bell },
+  { path: "/settings", label: "Configuración", icon: Settings, role: "admin" },
 ];
 
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<DashboardStats>({
     queryKey: ['/api/dashboard/stats'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const getBadgeValue = (badgeKey: string | undefined) => {
+  const getBadgeValue = (badgeKey: string | undefined): number | null => {
     if (!badgeKey || !stats) return null;
     
-    const keys = badgeKey.split('.');
-    let value = stats;
-    for (const key of keys) {
-      value = value?.[key];
-    }
-    return value > 0 ? value : null;
+    const [section, key] = badgeKey.split('.');
+    if (!section || !key) return null;
+
+    const sectionData = stats[section as keyof DashboardStats];
+    const value = sectionData?.[key as keyof StatsSection];
+    
+    return typeof value === 'number' && value > 0 ? value : null;
   };
 
   const handleLogout = () => {
@@ -85,9 +105,11 @@ export default function Sidebar() {
 
       {/* Navigation Menu */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {menuItems.map((item) => {
-          const isActive = location === item.path;
-          const badgeValue = getBadgeValue(item.badge);
+        {menuItems
+          .filter(item => !item.role || item.role === user?.role)
+          .map((item) => {
+            const isActive = location === item.path;
+            const badgeValue = getBadgeValue(item.badge);
           
           return (
             <Link key={item.path} href={item.path}>

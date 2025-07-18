@@ -8,9 +8,13 @@ import {
   type Invoice, type InsertInvoice
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, like, or, and, count, desc, asc, lte, sql } from "drizzle-orm";
+import { eq, like, or, and, count, desc, asc, lte, gte, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // Company Settings
+  getCompanySettings(): Promise<CompanySettings | undefined>;
+  updateCompanySettings(settings: Partial<CompanySettings>): Promise<CompanySettings>;
+
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -47,6 +51,13 @@ export interface IStorage {
   getNotifications(params: { userId?: number; unreadOnly?: boolean; limit?: number }): Promise<Notification[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: number): Promise<Notification | undefined>;
+
+  // Invoices
+  getInvoices(params: { status?: string; limit?: number; fromDate?: Date; toDate?: Date }): Promise<Invoice[]>;
+  getInvoiceById(id: number): Promise<Invoice | undefined>;
+  getInvoiceCount(): Promise<number>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoiceStatus(id: number, status: string, paidDate?: Date): Promise<Invoice | undefined>;
 
   // Invoices
   getInvoices(params: { status?: string; limit?: number }): Promise<Invoice[]>;
@@ -440,9 +451,116 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
+  async getInvoices(params: { status?: string; limit?: number; fromDate?: Date; toDate?: Date }): Promise<Invoice[]> {
+    const query = db.select().from(invoices);
+
+    if (params.status) {
+      query.where(eq(invoices.status, params.status));
+    }
+
+    if (params.fromDate) {
+      query.where(gte(invoices.issueDate, params.fromDate));
+    }
+
+    if (params.toDate) {
+      query.where(lte(invoices.issueDate, params.toDate));
+    }
+
+    query.orderBy(desc(invoices.issueDate));
+
+    if (params.limit) {
+      query.limit(params.limit);
+    }
+
+    return await query;
+  }
+
+  async getInvoiceById(id: number): Promise<Invoice | undefined> {
+    const [invoice] = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, id))
+      .limit(1);
+    
+    return invoice;
+  }
+
+  async getInvoiceCount(): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(invoices);
+    return result?.count || 0;
+  }
+
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
     const [newInvoice] = await db.insert(invoices).values(invoice).returning();
     return newInvoice;
+  }
+
+  async updateInvoiceStatus(id: number, status: string, paidDate?: Date): Promise<Invoice | undefined> {
+    const [updatedInvoice] = await db
+      .update(invoices)
+      .set({ 
+        status,
+        paidDate: status === "paid" ? paidDate : null
+      })
+      .where(eq(invoices.id, id))
+      .returning();
+    
+    return updatedInvoice;
+  }
+
+  async getCompanySettings(): Promise<CompanySettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(companySettings)
+      .limit(1);
+    return settings;
+  }
+
+  async updateCompanySettings(settings: Partial<CompanySettings>): Promise<CompanySettings> {
+    const [current] = await db.select().from(companySettings).limit(1);
+    
+    if (!current) {
+      const [newSettings] = await db
+        .insert(companySettings)
+        .values({
+          ...settings,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as CompanySettings)
+        .returning();
+      return newSettings;
+    }
+
+    const [updatedSettings] = await db
+      .update(companySettings)
+      .set({
+        ...settings,
+        updatedAt: new Date(),
+      })
+      .where(eq(companySettings.id, current.id))
+      .returning();
+    
+    return updatedSettings;
+  }
+
+  async getClientByServiceOrder(serviceOrderId: number): Promise<Client | undefined> {
+    const [order] = await db
+      .select()
+      .from(serviceOrders)
+      .where(eq(serviceOrders.id, serviceOrderId))
+      .limit(1);
+
+    if (!order) return undefined;
+
+    const [client] = await db
+      .select()
+      .from(clients)
+      .where(eq(clients.id, order.clientId))
+      .limit(1);
+
+    return client;
   }
 
   async getPublicVehicleHistory(params: { documentNumber?: string; plate?: string }): Promise<any[]> {
