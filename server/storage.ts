@@ -31,6 +31,14 @@ export interface IStorage {
   createServiceOrder(order: InsertServiceOrder): Promise<ServiceOrder>;
   updateServiceOrder(id: number, updates: Partial<ServiceOrder>): Promise<ServiceOrder | undefined>;
   getServiceOrderCount(): Promise<number>;
+  updateServiceOrderStatus(id: number, status: string, completionDate?: Date): Promise<ServiceOrder | undefined>;
+  createStatusHistory(history: { 
+    serviceOrderId: number;
+    oldStatus: string;
+    newStatus: string;
+    comment?: string;
+    userId: number;
+  }): Promise<void>;
 
   // Clients
   getClients(params: { search?: string; limit?: number }): Promise<Client[]>;

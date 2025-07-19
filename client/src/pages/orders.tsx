@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,11 +11,28 @@ import NewOrderModal from "@/components/modals/new-order-modal";
 
 export default function Orders() {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ['/api/service-orders', { status: statusFilter }],
+  const { data: orders = [], isLoading, error } = useQuery({
+    queryKey: ['service-orders', { status: statusFilter }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      try {
+        const response = await apiRequest('GET', `/api/service-orders?${params}`);
+        const data = await response.json();
+        console.log('Service Orders Data:', data); // Para depuración
+        return data;
+      } catch (err) {
+        console.error('Error fetching service orders:', err);
+        throw err;
+      }
+    },
+    retry: 1,
+    refetchOnWindowFocus: false
   });
 
   const getStatusColor = (status: string) => {
@@ -88,6 +106,21 @@ export default function Orders() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-red-600 mb-2">Error al cargar las órdenes</h2>
+              <p className="text-gray-600">Por favor, intenta recargar la página</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="p-6 space-y-6">
@@ -124,7 +157,7 @@ export default function Orders() {
                     <SelectValue placeholder="Filtrar por estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los estados</SelectItem>
+                    <SelectItem value="all">Todos los estados</SelectItem>
                     <SelectItem value="pending">Pendiente</SelectItem>
                     <SelectItem value="in_progress">En Proceso</SelectItem>
                     <SelectItem value="completed">Completado</SelectItem>

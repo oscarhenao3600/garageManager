@@ -53,7 +53,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
       vehicleId: "",
       description: "",
       priority: "medium",
-      operatorId: "",
+      operatorId: "none",
     },
   });
 
@@ -78,7 +78,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
         ...data,
         clientId: parseInt(data.clientId),
         vehicleId: parseInt(data.vehicleId),
-        operatorId: data.operatorId ? parseInt(data.operatorId) : null,
+        operatorId: data.operatorId && data.operatorId !== 'none' ? parseInt(data.operatorId) : null,
       });
       return response.json();
     },
@@ -231,7 +231,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Asignar más tarde</SelectItem>
+                        <SelectItem value="none">Asignar más tarde</SelectItem>
                         {operators.map((operator: any) => (
                           <SelectItem key={operator.id} value={operator.id.toString()}>
                             {operator.firstName} {operator.lastName}

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Bell, 
@@ -13,14 +14,20 @@ import {
   Car,
   Info,
   Check,
-  X
+  X,
+  Search,
+  Settings,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import NotificationSettingsModal from "@/components/modals/notification-settings-modal";
 
 export default function Notifications() {
-  const [typeFilter, setTypeFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -47,6 +54,48 @@ export default function Notifications() {
       toast({
         title: "Error",
         description: error.message || "No se pudo marcar la notificación como leída.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('PATCH', '/api/notifications/mark-all-read');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      toast({
+        title: "Todas las notificaciones marcadas como leídas",
+        description: "Se han actualizado todas las notificaciones.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron marcar todas las notificaciones como leídas.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteNotificationMutation = useMutation({
+    mutationFn: async (notificationId: number) => {
+      const response = await apiRequest('DELETE', `/api/notifications/${notificationId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      toast({
+        title: "Notificación eliminada",
+        description: "La notificación ha sido eliminada exitosamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la notificación.",
         variant: "destructive",
       });
     },
@@ -112,18 +161,34 @@ export default function Notifications() {
   };
 
   const filteredNotifications = notifications.filter((notification: any) => {
-    const matchesType = !typeFilter || notification.type === typeFilter;
-    const matchesStatus = !statusFilter || 
+    const matchesSearch = !searchQuery || 
+      notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      notification.message.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesType = typeFilter === 'all' || notification.type === typeFilter;
+    const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'read' && notification.isRead) ||
       (statusFilter === 'unread' && !notification.isRead);
     
-    return matchesType && matchesStatus;
+    return matchesSearch && matchesType && matchesStatus;
   });
 
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   const handleMarkAsRead = (notificationId: number) => {
     markAsReadMutation.mutate(notificationId);
+  };
+
+  const handleMarkAllAsRead = () => {
+    if (unreadCount > 0) {
+      markAllAsReadMutation.mutate();
+    }
+  };
+
+  const handleDeleteNotification = (notificationId: number) => {
+    if (confirm('¿Estás seguro de que quieres eliminar esta notificación?')) {
+      deleteNotificationMutation.mutate(notificationId);
+    }
   };
 
   if (isLoading) {
@@ -146,6 +211,52 @@ export default function Notifications() {
     );
   }
 
+  if (!notifications || notifications.length === 0) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Notificaciones</h1>
+            <p className="text-gray-600">Gestiona alertas y recordatorios del sistema</p>
+          </div>
+          <div className="flex space-x-2">
+            <Button 
+              onClick={() => setShowSettingsModal(true)} 
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Configurar Alertas
+            </Button>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Bell className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay notificaciones</h3>
+            <p className="text-gray-600 mb-6">
+              ¡Excelente! No tienes notificaciones pendientes. El sistema te notificará cuando haya algo importante.
+            </p>
+            <Button 
+              onClick={() => setShowSettingsModal(true)} 
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Configurar Preferencias
+            </Button>
+          </CardContent>
+        </Card>
+
+        <NotificationSettingsModal 
+          open={showSettingsModal} 
+          onOpenChange={setShowSettingsModal} 
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -162,10 +273,18 @@ export default function Notifications() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
-            Marcar todas como leídas
+          <Button 
+            variant="outline"
+            onClick={handleMarkAllAsRead}
+            disabled={markAllAsReadMutation.isPending || unreadCount === 0}
+          >
+            {markAllAsReadMutation.isPending ? "Marcando..." : "Marcar todas como leídas"}
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            onClick={() => setShowSettingsModal(true)} 
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Settings className="w-4 h-4 mr-2" />
             Configurar Alertas
           </Button>
         </div>
@@ -234,13 +353,24 @@ export default function Notifications() {
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar en notificaciones..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
             <div className="w-full md:w-64">
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filtrar por tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos los tipos</SelectItem>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
                   <SelectItem value="soat_expiry">SOAT Vencido</SelectItem>
                   <SelectItem value="technical_inspection">Revisión Técnica</SelectItem>
                   <SelectItem value="low_stock">Stock Bajo</SelectItem>
@@ -256,7 +386,7 @@ export default function Notifications() {
                   <SelectValue placeholder="Filtrar por estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   <SelectItem value="unread">Sin leer</SelectItem>
                   <SelectItem value="read">Leídas</SelectItem>
                 </SelectContent>
@@ -272,7 +402,9 @@ export default function Notifications() {
           <Card>
             <CardContent className="p-12 text-center">
               <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No hay notificaciones para mostrar</p>
+              <p className="text-gray-500">
+                {notifications.length === 0 ? "No hay notificaciones para mostrar" : "No hay notificaciones que coincidan con los filtros"}
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -327,8 +459,14 @@ export default function Notifications() {
                         Marcar leída
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm">
-                      <X className="w-4 h-4" />
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDeleteNotification(notification.id)}
+                      disabled={deleteNotificationMutation.isPending}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -337,6 +475,11 @@ export default function Notifications() {
           ))
         )}
       </div>
+
+      <NotificationSettingsModal 
+        open={showSettingsModal} 
+        onOpenChange={setShowSettingsModal} 
+      />
     </div>
   );
 }

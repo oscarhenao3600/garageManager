@@ -6,18 +6,34 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Package, AlertTriangle, TrendingDown } from "lucide-react";
+import NewItemModal from "@/components/modals/new-item-modal";
 
 export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("");
-  const [stockFilter, setStockFilter] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [stockFilter, setStockFilter] = useState<string>("all");
+  const [showNewItemModal, setShowNewItemModal] = useState(false);
 
   const { data: inventory = [], isLoading } = useQuery({
-    queryKey: ['/api/inventory', { 
-      category: categoryFilter, 
-      lowStock: stockFilter === 'low',
-      search: searchQuery 
-    }],
+    queryKey: ['/api/inventory'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/inventory', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Error al cargar el inventario");
+        }
+        return response.json();
+      } catch (err) {
+        console.error('Error fetching inventory:', err);
+        throw err;
+      }
+    },
+    retry: 1,
+    refetchOnWindowFocus: false
   });
 
   const getStockStatus = (item: any) => {
@@ -43,6 +59,22 @@ export default function Inventory() {
     }).format(amount);
   };
 
+  // Aplicar filtros a los datos
+  const filteredInventory = inventory.filter((item: any) => {
+    const matchesSearch = !searchQuery || 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    
+    const matchesStock = stockFilter === 'all' || 
+      (stockFilter === 'low' && getStockStatus(item).status === 'low') ||
+      (stockFilter === 'normal' && getStockStatus(item).status === 'good');
+    
+    return matchesSearch && matchesCategory && matchesStock;
+  });
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -63,6 +95,50 @@ export default function Inventory() {
     );
   }
 
+  if (!inventory || inventory.length === 0) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Inventario</h1>
+            <p className="text-gray-600">Gestiona repuestos y materiales del taller</p>
+          </div>
+          <Button 
+            onClick={() => setShowNewItemModal(true)} 
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Item
+          </Button>
+        </div>
+
+        {/* Empty State */}
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay items en el inventario</h3>
+            <p className="text-gray-600 mb-6">
+              Comienza agregando repuestos y materiales al inventario del taller
+            </p>
+            <Button 
+              onClick={() => setShowNewItemModal(true)} 
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Agregar Primer Item
+            </Button>
+          </CardContent>
+        </Card>
+
+        <NewItemModal 
+          open={showNewItemModal} 
+          onOpenChange={setShowNewItemModal} 
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -71,10 +147,72 @@ export default function Inventory() {
           <h1 className="text-3xl font-bold text-gray-900">Inventario</h1>
           <p className="text-gray-600">Gestiona repuestos y materiales del taller</p>
         </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
+        <Button 
+          onClick={() => setShowNewItemModal(true)} 
+          className="bg-purple-600 hover:bg-purple-700"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Item
         </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Items</p>
+                <p className="text-2xl font-bold text-purple-600">{inventory.length}</p>
+              </div>
+              <Package className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Stock Crítico</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {inventory.filter((item: any) => getStockStatus(item).status === 'critical').length}
+                </p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Stock Bajo</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {inventory.filter((item: any) => getStockStatus(item).status === 'low').length}
+                </p>
+              </div>
+              <TrendingDown className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Valor Total</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(inventory.reduce((sum: number, item: any) => 
+                    sum + (item.currentStock * item.unitCost), 0
+                  ))}
+                </p>
+              </div>
+              <Package className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -98,7 +236,7 @@ export default function Inventory() {
                   <SelectValue placeholder="Categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas las categorías</SelectItem>
+                                          <SelectItem value="all">Todas las categorías</SelectItem>
                   <SelectItem value="motor">Motor</SelectItem>
                   <SelectItem value="frenos">Frenos</SelectItem>
                   <SelectItem value="suspension">Suspensión</SelectItem>
@@ -115,7 +253,7 @@ export default function Inventory() {
                   <SelectValue placeholder="Estado del stock" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos los stocks</SelectItem>
+                                          <SelectItem value="all">Todos los stocks</SelectItem>
                   <SelectItem value="low">Stock bajo</SelectItem>
                   <SelectItem value="normal">Stock normal</SelectItem>
                 </SelectContent>
@@ -127,17 +265,19 @@ export default function Inventory() {
 
       {/* Inventory Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {inventory.length === 0 ? (
+        {filteredInventory.length === 0 ? (
           <div className="col-span-full">
             <Card>
               <CardContent className="p-12 text-center">
                 <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No se encontraron items en el inventario</p>
+                <p className="text-gray-500">
+                  {inventory.length === 0 ? "No se encontraron items en el inventario" : "No hay items que coincidan con los filtros"}
+                </p>
               </CardContent>
             </Card>
           </div>
         ) : (
-          inventory.map((item: any) => {
+          filteredInventory.map((item: any) => {
             const stockStatus = getStockStatus(item);
             
             return (
@@ -216,12 +356,24 @@ export default function Inventory() {
 
                   {/* Actions */}
                   <div className="flex space-x-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => {
+                        // TODO: Implementar edición
+                        console.log('Editar item:', item.id);
+                      }}
+                    >
                       Editar
                     </Button>
                     <Button 
                       size="sm" 
                       className="flex-1 bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        // TODO: Implementar gestión de stock
+                        console.log('Gestionar stock:', item.id);
+                      }}
                     >
                       Stock
                     </Button>

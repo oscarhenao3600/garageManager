@@ -85,6 +85,17 @@ export const serviceOrders = pgTable("service_orders", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Service Order Status History table
+export const serviceOrderStatusHistory = pgTable("service_order_status_history", {
+  id: serial("id").primaryKey(),
+  serviceOrderId: integer("service_order_id").notNull().references(() => serviceOrders.id),
+  oldStatus: text("old_status"),
+  newStatus: text("new_status").notNull(),
+  comment: text("comment"),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Inventory items table
 export const inventoryItems = pgTable("inventory_items", {
   id: serial("id").primaryKey(),

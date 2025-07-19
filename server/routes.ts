@@ -323,6 +323,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para cambiar el estado de una orden de servicio
+  app.patch("/api/service-orders/:id/status", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      const { status, comment } = req.body;
+      const authReq = req as AuthenticatedRequest;
+
+      // Validar el nuevo estado
+      const validStatuses = ["pending", "in_progress", "completed", "billed", "closed"];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ 
+          message: "Estado inválido. Los estados válidos son: " + validStatuses.join(", ") 
+        });
+      }
+
+      // Obtener la orden actual
+      const currentOrder = await dbStorage.getServiceOrderById(orderId);
+      if (!currentOrder) {
+        return res.status(404).json({ message: "Orden de servicio no encontrada" });
+      }
+
+      // Validar la transición de estado
+      const validTransitions: { [key: string]: string[] } = {
+        pending: ["in_progress", "closed"],
+        in_progress: ["completed", "closed"],
+        completed: ["billed", "closed"],
+        billed: ["closed"],
+        closed: []
+      };
+
+      if (!validTransitions[currentOrder.status]?.includes(status)) {
+        return res.status(400).json({ 
+          message: `No se puede cambiar el estado de ${currentOrder.status} a ${status}` 
+        });
+      }
+
+      // Actualizar el estado
+      const updatedOrder = await dbStorage.updateServiceOrderStatus(
+        orderId, 
+        status, 
+        status === "completed" ? new Date() : undefined
+      );
+
+      // Registrar el cambio en el historial
+      await dbStorage.createStatusHistory({
+        serviceOrderId: orderId,
+        oldStatus: currentOrder.status,
+        newStatus: status,
+        comment: comment || undefined,
+        userId: authReq.user.id
+      });
+
+      // Si el estado cambia a completed, crear una notificación
+      if (status === "completed") {
+        await dbStorage.createNotification({
+          userId: currentOrder.clientId, // Notificar al cliente
+          type: "service_order_completed",
+          title: "Orden de servicio completada",
+          message: `La orden de servicio ${currentOrder.orderNumber} ha sido completada`,
+          link: `/service-orders/${orderId}`,
+          isRead: false
+        });
+      }
+
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Update service order status error:", error);
+      res.status(500).json({ message: "Error al actualizar el estado de la orden" });
+    }
+  });
+
   // Clients routes
   app.get("/api/clients", authenticateToken, async (req: Request, res: Response) => {
     try {

@@ -9,7 +9,7 @@ import { Plus, Search, FileText, Download, Eye, DollarSign, Calendar, AlertTrian
 
 export default function Billing() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const { data: invoices = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/invoices', { status: statusFilter }],
@@ -126,7 +126,9 @@ export default function Billing() {
       invoice.serviceOrder?.client?.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.serviceOrder?.vehicle?.plate.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesSearch;
+    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
   });
 
   const totalPending = invoices
@@ -240,7 +242,7 @@ export default function Billing() {
                   <SelectValue placeholder="Filtrar por estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos los estados</SelectItem>
+                                          <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="pending">Pendiente</SelectItem>
                   <SelectItem value="paid">Pagada</SelectItem>
                   <SelectItem value="overdue">Vencida</SelectItem>
