@@ -73,6 +73,7 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
 
   const createItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      console.log('Enviando datos:', data);
       const response = await apiRequest('POST', '/api/inventory', data);
       return response.json();
     },
@@ -86,16 +87,55 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
       form.reset();
     },
     onError: (error: any) => {
+      console.error('Error al crear item:', error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear el item.",
+        description: error.message || "No se pudo crear el item. Revisa la consola para más detalles.",
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    createItemMutation.mutate(data);
+    console.log('Datos del formulario:', data);
+    
+    // Validación adicional
+    if (!data.name || !data.code || !data.category || !data.unit) {
+      toast({
+        title: "Error de validación",
+        description: "Por favor completa todos los campos requeridos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (data.unitCost < 0 || data.sellingPrice < 0) {
+      toast({
+        title: "Error de validación",
+        description: "Los precios no pueden ser negativos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (data.currentStock < 0 || data.minStock < 0 || data.maxStock < 0) {
+      toast({
+        title: "Error de validación",
+        description: "Los valores de stock no pueden ser negativos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Convertir campos decimales a string para Drizzle
+    const processedData = {
+      ...data,
+      unitCost: data.unitCost.toString(),
+      sellingPrice: data.sellingPrice.toString(),
+    };
+    
+    console.log('Datos procesados:', processedData);
+    createItemMutation.mutate(processedData);
   };
 
   return (
@@ -179,6 +219,7 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                         <SelectItem value="carroceria">Carrocería</SelectItem>
                         <SelectItem value="lubricantes">Lubricantes</SelectItem>
                         <SelectItem value="filtros">Filtros</SelectItem>
+                        <SelectItem value="servicios">Servicios</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -204,7 +245,8 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                         <SelectItem value="metro">Metro</SelectItem>
                         <SelectItem value="kg">Kilogramo</SelectItem>
                         <SelectItem value="par">Par</SelectItem>
-                        <SelectItem value="juego">Juego</SelectItem>
+                        <SelectItem value="kit">Kit</SelectItem>
+                        <SelectItem value="hora">Hora</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -237,9 +279,14 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                     <FormControl>
                       <Input
                         type="number"
+                        step="0.01"
+                        min="0"
                         placeholder="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value);
+                          field.onChange(isNaN(value) ? 0 : value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -256,9 +303,14 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                     <FormControl>
                       <Input
                         type="number"
+                        step="0.01"
+                        min="0"
                         placeholder="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value);
+                          field.onChange(isNaN(value) ? 0 : value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -277,9 +329,13 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                     <FormControl>
                       <Input
                         type="number"
+                        min="0"
                         placeholder="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          field.onChange(isNaN(value) ? 0 : value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -296,9 +352,13 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                     <FormControl>
                       <Input
                         type="number"
+                        min="0"
                         placeholder="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          field.onChange(isNaN(value) ? 0 : value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -315,9 +375,13 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                     <FormControl>
                       <Input
                         type="number"
+                        min="0"
                         placeholder="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          field.onChange(isNaN(value) ? 0 : value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />

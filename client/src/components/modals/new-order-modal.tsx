@@ -32,8 +32,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertServiceOrderSchema } from "@shared/schema";
 
 const formSchema = insertServiceOrderSchema.extend({
-  clientId: z.string().min(1, "Cliente requerido"),
-  vehicleId: z.string().min(1, "Vehículo requerido"),
+  clientId: z.coerce.number().min(1, "Debe seleccionar un cliente"),
+  vehicleId: z.coerce.number().min(1, "Debe seleccionar un vehículo"),
+  operatorId: z.string().nullable().transform(val => val === "none" ? null : val),
+  description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
 });
 
 interface NewOrderModalProps {
@@ -49,8 +51,8 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      clientId: "",
-      vehicleId: "",
+      clientId: 0,
+      vehicleId: 0,
       description: "",
       priority: "medium",
       operatorId: "none",
@@ -60,26 +62,41 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
     enabled: open,
+    select: (data: any[]) => data.filter(client => client.isActive)
   });
 
   const { data: vehicles = [] } = useQuery({
     queryKey: ['/api/clients', selectedClientId, 'vehicles'],
     enabled: !!selectedClientId,
+    queryFn: async () => {
+      if (!selectedClientId) return [];
+      const response = await apiRequest('GET', `/api/clients/${selectedClientId}/vehicles`);
+      return response.json();
+    },
+    select: (data: any[]) => data.filter(vehicle => vehicle.isActive)
   });
 
   const { data: operators = [] } = useQuery({
     queryKey: ['/api/workers'],
     enabled: open,
+    select: (data: any[]) => data.filter(operator => 
+      operator.isActive && operator.role === "operator"
+    )
   });
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const response = await apiRequest('POST', '/api/service-orders', {
+      const payload = {
         ...data,
-        clientId: parseInt(data.clientId),
-        vehicleId: parseInt(data.vehicleId),
-        operatorId: data.operatorId && data.operatorId !== 'none' ? parseInt(data.operatorId) : null,
-      });
+        operatorId: data.operatorId === "none" ? null : parseInt(data.operatorId || "")
+      };
+
+      const response = await apiRequest('POST', '/api/service-orders', payload);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error al crear orden");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -89,13 +106,15 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
         title: "Orden creada",
         description: "La orden de servicio ha sido creada exitosamente.",
       });
-      onOpenChange(false);
       form.reset();
+      onOpenChange(false);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear la orden de servicio.",
+        description: error.message.includes('JSON') 
+          ? "Error en el formato de datos enviado" 
+          : error.message,
         variant: "destructive",
       });
     },
@@ -106,9 +125,10 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
   };
 
   const handleClientChange = (clientId: string) => {
+    const clientIdNum = parseInt(clientId);
     setSelectedClientId(clientId);
-    form.setValue("clientId", clientId);
-    form.setValue("vehicleId", ""); // Reset vehicle selection
+    form.setValue("clientId", clientIdNum);
+    form.setValue("vehicleId", 0);
   };
 
   return (
@@ -117,7 +137,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
         <DialogHeader>
           <DialogTitle>Nueva Orden de Servicio</DialogTitle>
           <DialogDescription>
-            Crear una nueva orden de servicio para un vehículo
+            Complete los datos para crear una nueva orden de servicio
           </DialogDescription>
         </DialogHeader>
 
@@ -129,16 +149,22 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
                 name="clientId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                    <Select onValueChange={handleClientChange} value={field.value}>
+                    <FormLabel>Cliente *</FormLabel>
+                    <Select 
+                      onValueChange={handleClientChange} 
+                      value={field.value.toString()}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar cliente..." />
+                          <SelectValue placeholder="Seleccione un cliente..." />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {clients.map((client: any) => (
-                          <SelectItem key={client.id} value={client.id.toString()}>
+                        {clients.map((client) => (
+                          <SelectItem 
+                            key={client.id} 
+                            value={client.id.toString()}
+                          >
                             {client.firstName} {client.lastName} - {client.documentNumber}
                           </SelectItem>
                         ))}
@@ -154,19 +180,32 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
                 name="vehicleId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Vehículo</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel>Vehículo *</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      value={field.value.toString()}
+                      disabled={!form.watch("clientId")}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar vehículo..." />
+                          <SelectValue placeholder="Seleccione un vehículo..." />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {vehicles.map((vehicle: any) => (
-                          <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
-                            {vehicle.brand} {vehicle.model} {vehicle.year} - {vehicle.plate}
+                        {vehicles.length > 0 ? (
+                          vehicles.map((vehicle) => (
+                            <SelectItem 
+                              key={vehicle.id} 
+                              value={vehicle.id.toString()}
+                            >
+                              {vehicle.brand} {vehicle.model} ({vehicle.year}) - {vehicle.plate}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="0" disabled>
+                            {form.watch("clientId") ? "No hay vehículos registrados" : "Seleccione un cliente primero"}
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -180,11 +219,12 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descripción del Problema</FormLabel>
+                  <FormLabel>Descripción del Problema *</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Describa el problema reportado por el cliente..."
+                      placeholder="Describa detalladamente el problema..."
                       rows={4}
+                      className="min-h-[120px]"
                       {...field}
                     />
                   </FormControl>
@@ -199,11 +239,11 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Prioridad</FormLabel>
+                    <FormLabel>Prioridad *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Seleccione prioridad" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -224,16 +264,22 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Operario Asignado</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || "none"}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Asignar más tarde" />
+                          <SelectValue placeholder="Seleccione operario" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Asignar más tarde</SelectItem>
-                        {operators.map((operator: any) => (
-                          <SelectItem key={operator.id} value={operator.id.toString()}>
+                        {operators.map((operator) => (
+                          <SelectItem 
+                            key={operator.id} 
+                            value={operator.id.toString()}
+                          >
                             {operator.firstName} {operator.lastName}
                           </SelectItem>
                         ))}
@@ -249,7 +295,11 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  form.reset();
+                  onOpenChange(false);
+                }}
+                disabled={createOrderMutation.isPending}
               >
                 Cancelar
               </Button>

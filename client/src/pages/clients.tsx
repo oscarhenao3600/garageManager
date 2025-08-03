@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, User, Phone, Mail, MapPin } from "lucide-react";
 import NewClientModal from "@/components/modals/new-client-modal";
+import EditClientModal from "@/components/modals/edit-client-modal";
 
 export default function Clients() {
   const [showNewClientModal, setShowNewClientModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editClient, setEditClient] = useState<any | null>(null); // Estado para edición
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['/api/clients', { search: searchQuery }],
@@ -66,7 +68,7 @@ export default function Clients() {
         </Card>
 
         {/* Clients Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
           {clients.length === 0 ? (
             <div className="col-span-full">
               <Card>
@@ -137,7 +139,7 @@ export default function Clients() {
                         <Button variant="outline" size="sm">
                           Ver Vehículos
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => setEditClient(client)}>
                           Editar
                         </Button>
                       </div>
@@ -153,6 +155,13 @@ export default function Clients() {
       <NewClientModal 
         open={showNewClientModal} 
         onOpenChange={setShowNewClientModal} 
+      />
+      <EditClientModal
+        open={!!editClient}
+        onOpenChange={(open) => {
+          if (!open) setEditClient(null);
+        }}
+        client={editClient}
       />
     </>
   );

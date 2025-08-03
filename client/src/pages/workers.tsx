@@ -254,7 +254,7 @@ export default function Workers() {
       </Card>
 
       {/* Workers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
         {filteredWorkers.length === 0 ? (
           <div className="col-span-full">
             <Card>

@@ -51,6 +51,7 @@ const formSchema = z.object({
 interface NewWorkerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  worker?: WorkerType;
 }
 
 export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalProps) {
@@ -73,28 +74,34 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
   });
 
   const createWorkerMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const { confirmPassword, ...workerData } = data;
-      const response = await apiRequest('POST', '/api/workers', workerData);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/workers'] });
-      toast({
-        title: "Operario creado",
-        description: "El operario ha sido registrado exitosamente.",
-      });
-      onOpenChange(false);
-      form.reset();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo crear el operario.",
-        variant: "destructive",
-      });
-    },
-  });
+  mutationFn: async (data: z.infer<typeof formSchema>) => {
+    const { confirmPassword, ...workerData } = data;
+    const response = await apiRequest('POST', '/api/workers', workerData);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "No se pudo crear el operario");
+    }
+    
+    return response.json();
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['workers'] });
+    toast({
+      title: "Operario creado",
+      description: "El operario ha sido registrado exitosamente.",
+    });
+    onOpenChange(false);
+    form.reset();
+  },
+  onError: (error: Error) => {
+    toast({
+      title: "Error",
+      description: error.message || "No se pudo crear el operario.",
+      variant: "destructive",
+    });
+  },
+});
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     createWorkerMutation.mutate(data);

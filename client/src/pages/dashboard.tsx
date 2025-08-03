@@ -185,7 +185,7 @@ export default function Dashboard() {
                     No hay órdenes recientes
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                     {recentOrders.map((order: any) => (
                       <div key={order.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                         <div className="flex items-center space-x-4">
@@ -239,7 +239,7 @@ export default function Dashboard() {
                   No hay notificaciones pendientes
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                   {notifications.map((notification: any) => (
                     <div key={notification.id} className={`flex items-start space-x-3 p-3 rounded-lg border ${
                       notification.priority === 'high' ? 'bg-red-50 border-red-200' :

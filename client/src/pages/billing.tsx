@@ -254,7 +254,7 @@ export default function Billing() {
       </Card>
 
       {/* Invoices List */}
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
         {filteredInvoices.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">

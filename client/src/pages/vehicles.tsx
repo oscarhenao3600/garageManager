@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Car, Calendar, AlertTriangle, CheckCircle } from "lucide-react";
+import NewVehicleModal from "@/components/modals/new-vehicle-modal";
+import EditVehicleModal from "@/components/modals/edit-vehicle-modal";
 
 export default function Vehicles() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isNewVehicleModalOpen, setIsNewVehicleModalOpen] = useState(false);
+  const [editVehicle, setEditVehicle] = useState<any | null>(null); // Nuevo estado para edición
 
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ['/api/vehicles', { search: searchQuery }],
@@ -53,7 +57,10 @@ export default function Vehicles() {
           <h1 className="text-3xl font-bold text-gray-900">Vehículos</h1>
           <p className="text-gray-600">Gestiona la información de todos los vehículos registrados</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={() => setIsNewVehicleModalOpen(true)}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Vehículo
         </Button>
@@ -75,7 +82,7 @@ export default function Vehicles() {
       </Card>
 
       {/* Vehicles Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
         {vehicles.length === 0 ? (
           <div className="col-span-full">
             <Card>
@@ -113,7 +120,7 @@ export default function Vehicles() {
                 <CardContent>
                   <div className="space-y-4">
                     {/* Vehicle Info */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
                         <p className="text-gray-500">Año</p>
                         <p className="font-medium">{vehicle.year}</p>
@@ -121,6 +128,10 @@ export default function Vehicles() {
                       <div>
                         <p className="text-gray-500">Color</p>
                         <p className="font-medium">{vehicle.color || 'No especificado'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Kilometraje</p>
+                        <p className="font-medium">{vehicle.mileage ? `${vehicle.mileage.toLocaleString()} km` : 'No especificado'}</p>
                       </div>
                     </div>
 
@@ -158,7 +169,7 @@ export default function Vehicles() {
                         <Button variant="outline" size="sm">
                           Ver Historial
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => setEditVehicle(vehicle)}>
                           Editar
                         </Button>
                       </div>
@@ -183,6 +194,19 @@ export default function Vehicles() {
           })
         )}
       </div>
+
+      {/* Modal para nuevo vehículo */}
+      <NewVehicleModal 
+        open={isNewVehicleModalOpen} 
+        onOpenChange={setIsNewVehicleModalOpen} 
+      />
+      <EditVehicleModal
+        open={!!editVehicle}
+        onOpenChange={(open) => {
+          if (!open) setEditVehicle(null);
+        }}
+        vehicle={editVehicle}
+      />
     </div>
   );
 }

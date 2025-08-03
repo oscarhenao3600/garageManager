@@ -397,7 +397,7 @@ export default function Notifications() {
       </Card>
 
       {/* Notifications List */}
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
         {filteredNotifications.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">

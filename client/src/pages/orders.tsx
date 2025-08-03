@@ -1,24 +1,32 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, Play, UserPlus } from "lucide-react";
 import NewOrderModal from "@/components/modals/new-order-modal";
+import AssignOperatorModal from "@/components/modals/assign-operator-modal";
+import OrderDetailsModal from "@/components/modals/order-details-modal";
+import { useToast } from "@/hooks/use-toast";
 
-export default function Orders() {
+export default function Orders() { 
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showAssignOperatorModal, setShowAssignOperatorModal] = useState(false);
+  const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: orders = [], isLoading, error } = useQuery({
     queryKey: ['service-orders', { status: statusFilter }],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (statusFilter && statusFilter !== 'all') {
+      if (statusFilter) {
         params.append('status', statusFilter);
       }
       try {
@@ -76,6 +84,50 @@ export default function Orders() {
       default: return priority;
     }
   };
+
+  // Función para manejar el inicio de una orden
+  const handleStartOrder = (order: any) => {
+    if (!order.operator) {
+      // Si no tiene operario asignado, abrir modal de asignación
+      setSelectedOrder(order);
+      setShowAssignOperatorModal(true);
+    } else {
+      // Si ya tiene operario, iniciar directamente
+      startOrderMutation.mutate(order.id);
+    }
+  };
+
+  // Función para manejar ver detalles de una orden
+  const handleViewDetails = (order: any) => {
+    setSelectedOrder(order);
+    setShowOrderDetailsModal(true);
+  };
+
+  // Mutación para iniciar orden (cuando ya tiene operario asignado)
+  const startOrderMutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      const response = await apiRequest('PATCH', `/api/service-orders/${orderId}/status`, {
+        status: 'in_progress',
+        comment: 'Orden iniciada'
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      toast({
+        title: "Orden iniciada",
+        description: "La orden de servicio ha sido iniciada exitosamente.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error al iniciar orden:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo iniciar la orden.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const filteredOrders = orders.filter((order: any) => {
     const matchesSearch = !searchQuery || 
@@ -171,7 +223,7 @@ export default function Orders() {
         </Card>
 
         {/* Orders List */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-4 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
           {filteredOrders.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
@@ -233,12 +285,31 @@ export default function Orders() {
                     </div>
                     
                     <div className="flex flex-col space-y-2 ml-4">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewDetails(order)}
+                      >
                         Ver Detalles
                       </Button>
                       {order.status === 'pending' && (
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                          Iniciar
+                        <Button 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleStartOrder(order)}
+                          disabled={startOrderMutation.isPending}
+                        >
+                          {!order.operator ? (
+                            <>
+                              <UserPlus className="w-4 h-4 mr-1" />
+                              Asignar e Iniciar
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-4 h-4 mr-1" />
+                              Iniciar
+                            </>
+                          )}
                         </Button>
                       )}
                       {order.status === 'completed' && (
@@ -259,6 +330,26 @@ export default function Orders() {
         open={showNewOrderModal} 
         onOpenChange={setShowNewOrderModal} 
       />
+
+      {selectedOrder && (
+        <AssignOperatorModal
+          open={showAssignOperatorModal}
+          onOpenChange={setShowAssignOperatorModal}
+          orderId={selectedOrder.id}
+          orderNumber={selectedOrder.orderNumber}
+          onSuccess={() => {
+            setSelectedOrder(null);
+          }}
+        />
+      )}
+
+      {selectedOrder && (
+        <OrderDetailsModal
+          open={showOrderDetailsModal}
+          onOpenChange={setShowOrderDetailsModal}
+          orderId={selectedOrder.id}
+        />
+      )}
     </>
   );
 }
