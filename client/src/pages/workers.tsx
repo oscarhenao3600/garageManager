@@ -7,12 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, HardHat, Phone, Mail, CheckCircle, Clock, AlertCircle, Users, TrendingUp, Award } from "lucide-react";
 import NewWorkerModal from "@/components/modals/new-worker-modal";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Workers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showNewWorkerModal, setShowNewWorkerModal] = useState(false);
+  const { user } = useAuth();
+
+  // Verificar permisos
+  const isClient = user?.role === 'user';
+  const canManageWorkers = !isClient; // Solo admin, operator, etc. pueden gestionar trabajadores
 
   const { data: workers = [], isLoading } = useQuery({
     queryKey: ['/api/workers'],
@@ -104,16 +110,25 @@ export default function Workers() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Operarios</h1>
-            <p className="text-gray-600">Gestiona el equipo de trabajo del taller</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isClient ? 'Equipo del Taller' : 'Operarios'}
+            </h1>
+            <p className="text-gray-600">
+              {isClient 
+                ? 'Consulta información del equipo de trabajo' 
+                : 'Gestiona el equipo de trabajo del taller'
+              }
+            </p>
           </div>
-          <Button 
-            onClick={() => setShowNewWorkerModal(true)} 
-            className="bg-orange-600 hover:bg-orange-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Operario
-          </Button>
+          {canManageWorkers && (
+            <Button 
+              onClick={() => setShowNewWorkerModal(true)} 
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Operario
+            </Button>
+          )}
         </div>
 
         {/* Empty State */}
@@ -124,13 +139,15 @@ export default function Workers() {
             <p className="text-gray-600 mb-6">
               Comienza agregando operarios al equipo del taller
             </p>
-            <Button 
-              onClick={() => setShowNewWorkerModal(true)} 
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Agregar Primer Operario
-            </Button>
+            {canManageWorkers && (
+              <Button 
+                onClick={() => setShowNewWorkerModal(true)} 
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Agregar Primer Operario
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -147,16 +164,25 @@ export default function Workers() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Operarios</h1>
-          <p className="text-gray-600">Gestiona el equipo de trabajo del taller</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isClient ? 'Equipo del Taller' : 'Operarios'}
+          </h1>
+          <p className="text-gray-600">
+            {isClient 
+              ? 'Consulta información del equipo de trabajo' 
+              : 'Gestiona el equipo de trabajo del taller'
+            }
+          </p>
         </div>
-        <Button 
-          onClick={() => setShowNewWorkerModal(true)} 
-          className="bg-orange-600 hover:bg-orange-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Operario
-        </Button>
+        {canManageWorkers && (
+          <Button 
+            onClick={() => setShowNewWorkerModal(true)} 
+            className="bg-orange-600 hover:bg-orange-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Operario
+          </Button>
+        )}
       </div>
 
       {/* Team Statistics */}
@@ -368,28 +394,30 @@ export default function Workers() {
                       <span className="text-xs text-gray-500">
                         Desde {new Date(worker.createdAt).toLocaleDateString('es-CO')}
                       </span>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            // TODO: Implementar vista de órdenes del operario
-                            console.log('Ver órdenes del operario:', worker.id);
-                          }}
-                        >
-                          Ver Órdenes
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            // TODO: Implementar edición del operario
-                            console.log('Editar operario:', worker.id);
-                          }}
-                        >
-                          Editar
-                        </Button>
-                      </div>
+                      {canManageWorkers && (
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              // TODO: Implementar vista de órdenes del operario
+                              console.log('Ver órdenes del operario:', worker.id);
+                            }}
+                          >
+                            Ver Órdenes
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              // TODO: Implementar edición del operario
+                              console.log('Editar operario:', worker.id);
+                            }}
+                          >
+                            Editar
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

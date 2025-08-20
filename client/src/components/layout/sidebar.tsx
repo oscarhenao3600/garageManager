@@ -37,11 +37,12 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/orders", label: "Órdenes de Servicio", icon: ClipboardList, badge: "orders.pending" },
-  { path: "/clients", label: "Clientes", icon: Users },
-  { path: "/vehicles", label: "Vehículos", icon: Car },
-  { path: "/inventory", label: "Inventario", icon: Package, badge: "inventory.lowStock" },
-  { path: "/workers", label: "Operarios", icon: HardHat },
-  { path: "/billing", label: "Facturación", icon: FileText },
+  { path: "/operator-order-management", label: "Mis Órdenes", icon: Wrench, role: "operator" },
+  { path: "/clients", label: "Clientes", icon: Users, role: "admin" },
+  { path: "/vehicles", label: "Vehículos", icon: Car, role: "admin" },
+  { path: "/inventory", label: "Inventario", icon: Package, badge: "inventory.lowStock", role: "admin" },
+  { path: "/workers", label: "Operarios", icon: HardHat, role: "admin" },
+  { path: "/billing", label: "Facturación", icon: FileText, role: "admin" },
   { path: "/notifications", label: "Notificaciones", icon: Bell },
   { path: "/settings", label: "Configuración", icon: Settings, role: "admin" },
 ];
@@ -106,7 +107,30 @@ export default function Sidebar() {
       {/* Navigation Menu */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {menuItems
-          .filter(item => !item.role || item.role === user?.role)
+          .filter(item => {
+            // Si no hay rol especificado, mostrar para todos
+            if (!item.role) return true;
+            
+            // Si es superAdmin, mostrar todo
+            if (user?.role === 'superAdmin') return true;
+            
+            // Si es admin, mostrar elementos de admin y elementos sin rol
+            if (user?.role === 'admin') {
+              return item.role === 'admin' || !item.role;
+            }
+            
+            // Si es operator, mostrar elementos de operator y elementos sin rol
+            if (user?.role === 'operator') {
+              return item.role === 'operator' || !item.role;
+            }
+            
+            // Si es client (user), mostrar solo elementos sin rol
+            if (user?.role === 'user') {
+              return !item.role;
+            }
+            
+            return false;
+          })
           .map((item) => {
             const isActive = location === item.path;
             const badgeValue = getBadgeValue(item.badge);

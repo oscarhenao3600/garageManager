@@ -14,11 +14,34 @@ import Workers from "@/pages/workers";
 import Billing from "@/pages/billing";
 import Notifications from "@/pages/notifications";
 import Settings from "@/pages/settings";
+import OperatorOrderManagement from "@/components/OperatorOrderManagement";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
+import FirstLoginModal from "@/components/FirstLoginModal";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useState, useEffect } from "react";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
+
+  // Verificar si es primera sesión
+  const { data: firstLoginData } = useQuery({
+    queryKey: ['/api/auth/first-login'],
+    enabled: !!user,
+    refetchInterval: false,
+    staleTime: Infinity,
+  });
+
+  // Mostrar modal si es primera sesión
+  useEffect(() => {
+    if (firstLoginData?.isFirstLogin) {
+      setShowFirstLoginModal(true);
+    }
+  }, [firstLoginData]);
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -28,6 +51,12 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Modal de primera sesión */}
+      <FirstLoginModal 
+        open={showFirstLoginModal} 
+        onOpenChange={setShowFirstLoginModal} 
+      />
     </div>
   );
 }
@@ -59,6 +88,7 @@ function Router() {
         <Route path="/billing" component={Billing} />
         <Route path="/notifications" component={Notifications} />
         <Route path="/settings" component={Settings} />
+        <Route path="/operator-order-management" component={OperatorOrderManagement} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>

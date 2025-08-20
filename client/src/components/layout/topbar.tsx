@@ -4,10 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import NewOrderModal from "@/components/modals/new-order-modal";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Topbar() {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuth();
+
+  // Verificar permisos
+  const isClient = user?.role === 'user';
+  const isOperator = user?.role === 'operator';
+  const canCreateOrders = user?.role === 'admin'; // Solo admin puede crear órdenes
 
   const { data: notifications } = useQuery({
     queryKey: ['/api/notifications'],
@@ -43,13 +50,15 @@ export default function Topbar() {
             </div>
             
             {/* Quick Actions */}
-            <Button 
-              onClick={() => setShowNewOrderModal(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Orden
-            </Button>
+            {canCreateOrders && (
+              <Button 
+                onClick={() => setShowNewOrderModal(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Orden
+              </Button>
+            )}
             
             {/* Notifications */}
             <div className="relative">

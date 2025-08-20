@@ -7,11 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, User, Phone, Mail, MapPin } from "lucide-react";
 import NewClientModal from "@/components/modals/new-client-modal";
 import EditClientModal from "@/components/modals/edit-client-modal";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Clients() {
   const [showNewClientModal, setShowNewClientModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [editClient, setEditClient] = useState<any | null>(null); // Estado para edición
+  const { user } = useAuth();
+
+  // Verificar permisos
+  const isClient = user?.role === 'user';
+  const canManageClients = !isClient; // Solo admin, operator, etc. pueden gestionar clientes
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['/api/clients', { search: searchQuery }],
@@ -43,13 +49,22 @@ export default function Clients() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
-            <p className="text-gray-600">Gestiona la información de todos los clientes</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isClient ? 'Información de Clientes' : 'Clientes'}
+            </h1>
+            <p className="text-gray-600">
+              {isClient 
+                ? 'Consulta la información de clientes del sistema' 
+                : 'Gestiona la información de todos los clientes'
+              }
+            </p>
           </div>
-          <Button onClick={() => setShowNewClientModal(true)} className="bg-green-600 hover:bg-green-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Cliente
-          </Button>
+          {canManageClients && (
+            <Button onClick={() => setShowNewClientModal(true)} className="bg-green-600 hover:bg-green-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Cliente
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -75,13 +90,15 @@ export default function Clients() {
                 <CardContent className="p-12 text-center">
                   <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">No se encontraron clientes</p>
-                  <Button 
-                    onClick={() => setShowNewClientModal(true)}
-                    className="mt-4 bg-green-600 hover:bg-green-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Crear Primer Cliente
-                  </Button>
+                  {canManageClients && (
+                    <Button 
+                      onClick={() => setShowNewClientModal(true)}
+                      className="mt-4 bg-green-600 hover:bg-green-700"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Crear Primer Cliente
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -135,14 +152,16 @@ export default function Clients() {
                       <span className="text-xs text-gray-500">
                         Cliente desde {new Date(client.createdAt).toLocaleDateString('es-CO')}
                       </span>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          Ver Vehículos
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setEditClient(client)}>
-                          Editar
-                        </Button>
-                      </div>
+                      {canManageClients && (
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="sm">
+                            Ver Vehículos
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setEditClient(client)}>
+                            Editar
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

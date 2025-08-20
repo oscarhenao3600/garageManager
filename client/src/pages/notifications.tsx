@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import NotificationSettingsModal from "@/components/modals/notification-settings-modal";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Notifications() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -30,6 +31,11 @@ export default function Notifications() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Verificar permisos
+  const isClient = user?.role === 'user';
+  const canConfigureAlerts = !isClient; // Solo admin y operator pueden configurar alertas
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['/api/notifications', { 
@@ -216,18 +222,27 @@ export default function Notifications() {
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Notificaciones</h1>
-            <p className="text-gray-600">Gestiona alertas y recordatorios del sistema</p>
-          </div>
+                  <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isClient ? 'Mis Notificaciones' : 'Notificaciones'}
+          </h1>
+          <p className="text-gray-600">
+            {isClient 
+              ? 'Consulta tus alertas y recordatorios del sistema' 
+              : 'Gestiona alertas y recordatorios del sistema'
+            }
+          </p>
+        </div>
           <div className="flex space-x-2">
-            <Button 
-              onClick={() => setShowSettingsModal(true)} 
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Configurar Alertas
-            </Button>
+            {canConfigureAlerts && (
+              <Button 
+                onClick={() => setShowSettingsModal(true)} 
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Configurar Alertas
+              </Button>
+            )}
           </div>
         </div>
 
@@ -239,13 +254,15 @@ export default function Notifications() {
             <p className="text-gray-600 mb-6">
               ¡Excelente! No tienes notificaciones pendientes. El sistema te notificará cuando haya algo importante.
             </p>
-            <Button 
-              onClick={() => setShowSettingsModal(true)} 
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Configurar Preferencias
-            </Button>
+            {canConfigureAlerts && (
+              <Button 
+                onClick={() => setShowSettingsModal(true)} 
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Configurar Preferencias
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -262,9 +279,14 @@ export default function Notifications() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Notificaciones</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isClient ? 'Mis Notificaciones' : 'Notificaciones'}
+          </h1>
           <p className="text-gray-600">
-            Gestiona alertas y recordatorios del sistema
+            {isClient 
+              ? 'Consulta tus alertas y recordatorios del sistema' 
+              : 'Gestiona alertas y recordatorios del sistema'
+            }
             {unreadCount > 0 && (
               <span className="ml-2 text-orange-600 font-medium">
                 ({unreadCount} sin leer)
@@ -280,13 +302,15 @@ export default function Notifications() {
           >
             {markAllAsReadMutation.isPending ? "Marcando..." : "Marcar todas como leídas"}
           </Button>
-          <Button 
-            onClick={() => setShowSettingsModal(true)} 
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Configurar Alertas
-          </Button>
+          {canConfigureAlerts && (
+            <Button 
+              onClick={() => setShowSettingsModal(true)} 
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Configurar Alertas
+            </Button>
+          )}
         </div>
       </div>
 

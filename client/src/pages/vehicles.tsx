@@ -7,11 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Car, Calendar, AlertTriangle, CheckCircle } from "lucide-react";
 import NewVehicleModal from "@/components/modals/new-vehicle-modal";
 import EditVehicleModal from "@/components/modals/edit-vehicle-modal";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Vehicles() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewVehicleModalOpen, setIsNewVehicleModalOpen] = useState(false);
   const [editVehicle, setEditVehicle] = useState<any | null>(null); // Nuevo estado para edición
+  const { user } = useAuth();
+
+  // Verificar permisos
+  const isClient = user?.role === 'user';
+  const canManageVehicles = !isClient; // Solo admin, operator, etc. pueden gestionar vehículos
 
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ['/api/vehicles', { search: searchQuery }],
@@ -54,16 +60,25 @@ export default function Vehicles() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Vehículos</h1>
-          <p className="text-gray-600">Gestiona la información de todos los vehículos registrados</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isClient ? 'Vehículos del Sistema' : 'Vehículos'}
+          </h1>
+          <p className="text-gray-600">
+            {isClient 
+              ? 'Consulta la información de vehículos registrados' 
+              : 'Gestiona la información de todos los vehículos registrados'
+            }
+          </p>
         </div>
-        <Button 
-          className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => setIsNewVehicleModalOpen(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Vehículo
-        </Button>
+        {canManageVehicles && (
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => setIsNewVehicleModalOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Vehículo
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -165,14 +180,16 @@ export default function Vehicles() {
                       <span className="text-xs text-gray-500">
                         Registro: {new Date(vehicle.createdAt).toLocaleDateString('es-CO')}
                       </span>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          Ver Historial
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setEditVehicle(vehicle)}>
-                          Editar
-                        </Button>
-                      </div>
+                      {canManageVehicles && (
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="sm">
+                            Ver Historial
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setEditVehicle(vehicle)}>
+                            Editar
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Alerts */}

@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Play, UserPlus } from "lucide-react";
+import { Plus, Search, Play, UserPlus } from "lucide-react";
 import NewOrderModal from "@/components/modals/new-order-modal";
 import AssignOperatorModal from "@/components/modals/assign-operator-modal";
 import OrderDetailsModal from "@/components/modals/order-details-modal";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Orders() { 
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
@@ -21,13 +22,27 @@ export default function Orders() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Verificar si el usuario es cliente (rol 'user')
+  const isClient = user?.role === 'user';
+  const canCreateOrders = !isClient; // Solo admin, operator, etc. pueden crear órdenes
+  const canManageOrders = !isClient; // Solo admin, operator, etc. pueden gestionar órdenes
 
   const { data: orders = [], isLoading, error } = useQuery({
-    queryKey: ['service-orders', { status: statusFilter }],
+    queryKey: ['service-orders', { status: statusFilter, userId: user?.id, userRole: user?.role }],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (statusFilter) {
+      // Para clientes, no aplicar filtro de estado para mostrar historial completo
+      if (statusFilter && !isClient) {
         params.append('status', statusFilter);
+      }
+      // Agregar userId y userRole para filtrado en el backend
+      if (user?.id) {
+        params.append('userId', user.id.toString());
+      }
+      if (user?.role) {
+        params.append('userRole', user.role);
       }
       try {
         const response = await apiRequest('GET', `/api/service-orders?${params}`);
@@ -133,7 +148,9 @@ export default function Orders() {
     const matchesSearch = !searchQuery || 
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.vehicle?.plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      `${order.client?.firstName} ${order.client?.lastName}`.toLowerCase().includes(searchQuery.toLowerCase());
+      // Solo incluir búsqueda por cliente si no es un cliente
+      (!isClient && order.client?.firstName && order.client?.lastName && 
+       `${order.client.firstName} ${order.client.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return matchesSearch;
   });
@@ -179,13 +196,22 @@ export default function Orders() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Órdenes de Servicio</h1>
-            <p className="text-gray-600">Gestiona todas las órdenes de trabajo del taller</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isClient ? 'Mis Órdenes de Servicio' : 'Órdenes de Servicio'}
+            </h1>
+            <p className="text-gray-600">
+              {isClient 
+                ? 'Consulta el estado de tus órdenes de servicio' 
+                : 'Gestiona todas las órdenes de trabajo del taller'
+              }
+            </p>
           </div>
-          <Button onClick={() => setShowNewOrderModal(true)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Orden
-          </Button>
+          {canCreateOrders && (
+            <Button onClick={() => setShowNewOrderModal(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Nueva Orden
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -196,7 +222,10 @@ export default function Orders() {
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Buscar por número de orden, placa o cliente..."
+                    placeholder={isClient 
+                      ? "Buscar por número de orden o placa..." 
+                      : "Buscar por número de orden, placa o cliente..."
+                    }
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
@@ -248,14 +277,17 @@ export default function Orders() {
                         </Badge>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Cliente</p>
-                          <p className="text-sm text-gray-900">
-                            {order.client?.firstName} {order.client?.lastName}
-                          </p>
-                          <p className="text-xs text-gray-600">{order.client?.documentNumber}</p>
-                        </div>
+                      <div className={`grid gap-4 mb-4 ${!isClient ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+                        {/* Solo mostrar información del cliente si no es un cliente */}
+                        {!isClient && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Cliente</p>
+                            <p className="text-sm text-gray-900">
+                              {order.client?.firstName} {order.client?.lastName}
+                            </p>
+                            <p className="text-xs text-gray-600">{order.client?.documentNumber}</p>
+                          </div>
+                        )}
                         <div>
                           <p className="text-sm font-medium text-gray-500">Vehículo</p>
                           <p className="text-sm text-gray-900">
@@ -292,30 +324,36 @@ export default function Orders() {
                       >
                         Ver Detalles
                       </Button>
-                      {order.status === 'pending' && (
-                        <Button 
-                          size="sm" 
-                          className="bg-green-600 hover:bg-green-700"
-                          onClick={() => handleStartOrder(order)}
-                          disabled={startOrderMutation.isPending}
-                        >
-                          {!order.operator ? (
-                            <>
-                              <UserPlus className="w-4 h-4 mr-1" />
-                              Asignar e Iniciar
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-4 h-4 mr-1" />
-                              Iniciar
-                            </>
+                      
+                      {/* Solo mostrar botones de gestión para usuarios que no son clientes */}
+                      {canManageOrders && (
+                        <>
+                          {order.status === 'pending' && (
+                            <Button 
+                              size="sm" 
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleStartOrder(order)}
+                              disabled={startOrderMutation.isPending}
+                            >
+                              {!order.operator ? (
+                                <>
+                                  <UserPlus className="w-4 h-4 mr-1" />
+                                  Asignar e Iniciar
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-4 h-4 mr-1" />
+                                  Iniciar
+                                </>
+                              )}
+                            </Button>
                           )}
-                        </Button>
-                      )}
-                      {order.status === 'completed' && (
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                          Facturar
-                        </Button>
+                          {order.status === 'completed' && (
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                              Facturar
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
