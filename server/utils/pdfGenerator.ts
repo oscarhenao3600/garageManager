@@ -10,12 +10,12 @@ interface InvoiceItem {
 interface InvoiceWithItems extends Invoice {
   items: InvoiceItem[];
 }
-import { storage } from '../storage';
+import { dbStorage } from '../storage';
 import fs from 'fs';
 import path from 'path';
 
 export async function generateInvoicePDF(invoice: InvoiceWithItems): Promise<string> {
-  const companySettings = await storage.getCompanySettings();
+  const companySettings = await dbStorage.getCompanySettings();
   if (!companySettings) {
     throw new Error('Configuración de la empresa no encontrada');
   }
@@ -61,7 +61,7 @@ export async function generateInvoicePDF(invoice: InvoiceWithItems): Promise<str
      .text(`Vencimiento: ${invoice.dueDate.toLocaleDateString('es-CO')}`, 50, 200);
 
   // Información del cliente
-  const client = await storage.getClientByServiceOrder(invoice.serviceOrderId);
+  const client = await dbStorage.getClientByServiceOrder(invoice.serviceOrderId);
   if (client) {
     doc.text(`Cliente: ${client.firstName} ${client.lastName}`, 300, 170)
        .text(`Documento: ${client.documentNumber}`, 300, 185)

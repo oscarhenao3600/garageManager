@@ -2,8 +2,8 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { 
-  Settings, 
   LayoutDashboard, 
   ClipboardList, 
   Users, 
@@ -44,12 +44,13 @@ const menuItems: MenuItem[] = [
   { path: "/workers", label: "Operarios", icon: HardHat, role: "admin" },
   { path: "/billing", label: "Facturación", icon: FileText, role: "admin" },
   { path: "/notifications", label: "Notificaciones", icon: Bell },
-  { path: "/settings", label: "Configuración", icon: Settings, role: "admin" },
 ];
 
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const [tallerNombre, setTallerNombre] = useState("Mi Taller");
+  const [tallerDescripcion, setTallerDescripcion] = useState("Gestión Integral");
 
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: ['/api/dashboard/stats'],
@@ -68,9 +69,75 @@ export default function Sidebar() {
     return typeof value === 'number' && value > 0 ? value : null;
   };
 
+  // Función para cargar datos del taller
+  const cargarDatosTaller = async () => {
+    try {
+      console.log('🔄 Cargando datos del taller en Sidebar...');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('❌ No hay token en Sidebar');
+        return;
+      }
+
+      // Cargar datos de la empresa
+      const companyResponse = await fetch('/api/company-settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('📡 Respuesta de company-settings en Sidebar:', companyResponse.status);
+
+      if (companyResponse.ok) {
+        const companyData = await companyResponse.json();
+        console.log('📊 Datos de empresa recibidos en Sidebar:', companyData);
+        
+        if (companyData.name) {
+          setTallerNombre(companyData.name);
+          console.log('✅ Nombre del taller actualizado:', companyData.name);
+        }
+        if (companyData.address) {
+          setTallerDescripcion(companyData.address);
+          console.log('✅ Dirección del taller actualizada:', companyData.address);
+        }
+      }
+
+      // Cargar imágenes del taller desde el endpoint de imágenes
+      const imagesResponse = await fetch('/api/images/default-taller', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('📡 Respuesta de imágenes en Sidebar:', imagesResponse.status);
+
+      if (imagesResponse.ok) {
+        const imagesData = await imagesResponse.json();
+        console.log('🖼️ Datos de imágenes recibidos en Sidebar:', imagesData);
+        
+        if (imagesData.imagenes && imagesData.imagenes.logo) {
+          console.log('🖼️ Logo encontrado en imágenes (no se usa)');
+        } else {
+          console.log('❌ No hay logo en las imágenes del taller');
+        }
+      } else {
+        console.log('❌ Error cargando imágenes:', imagesResponse.status);
+      }
+    } catch (error) {
+      console.log('❌ Error cargando datos del taller en Sidebar:', error);
+    }
+  };
+
   const handleLogout = () => {
     logout();
   };
+
+  // Cargar datos del taller al montar el componente
+  useEffect(() => {
+    cargarDatosTaller();
+  }, []);
 
   return (
     <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col">
@@ -81,8 +148,8 @@ export default function Sidebar() {
             <Wrench className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">AutoTaller Pro</h1>
-            <p className="text-sm text-gray-600">Gestión Integral</p>
+            <h1 className="text-xl font-bold text-gray-900">{tallerNombre}</h1>
+            <p className="text-sm text-gray-600">{tallerDescripcion}</p>
           </div>
         </div>
       </div>

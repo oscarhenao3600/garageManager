@@ -1,26 +1,24 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage as dbStorage } from "./storage";
+import { dbStorage } from "./storage";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { insertUserSchema, insertClientSchema, insertVehicleSchema, insertServiceOrderSchema, insertInventoryItemSchema, insertNotificationSchema, insertVehicleTypeSchema, insertChecklistItemSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
 import { generateInvoicePDF } from "./utils/pdfGenerator";
 import { sendInvoiceEmail } from "./utils/emailSender";
 import { ParamsDictionary } from "express-serve-static-core";
 import { ParsedQs } from "qs";
 import { requirePasswordChange, requireCompletedFirstLogin } from "./middleware/firstLoginMiddleware";
+import { authenticateToken, isAdmin, isSuperAdmin, isOperatorOrHigher, canAccessResource, type AuthenticatedRequest } from "./middleware/authMiddleware";
+import reportsRouter from "./routes/reports";
+import imagesRouter from "./routes/images";
+import exportRouter from "./routes/export";
 
-// Extender la interfaz Request de Express
-interface AuthenticatedRequest extends Request<ParamsDictionary, any, any, ParsedQs> {
-  user: {
-    id: number;
-    username: string;
-    role: string;
-  };
-}
+// La interfaz AuthenticatedRequest ahora se importa desde authMiddleware
 
 interface InvoiceItem {
   quantity: number;
@@ -43,6 +41,10 @@ interface InvoiceWithItems {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+
+// Definir __dirname para ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configurar multer para subir archivos
 const storage = multer.diskStorage({
@@ -76,25 +78,21 @@ const upload = multer({
   }
 });
 
-// Middleware de autenticación
-function authenticateToken(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid or expired token' });
-    }
-    (req as AuthenticatedRequest).user = user;
-    next();
-  });
-}
+// El middleware de autenticación ahora se importa desde authMiddleware
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve static files from uploads directory
+  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+  
+  // Register report routes
+  app.use("/api/reports", reportsRouter);
+  
+  // Register image management routes
+  app.use("/api/images", imagesRouter);
+  
+  // Register export routes
+  app.use("/api/export", exportRouter);
+  
   // Authentication routes
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
@@ -646,7 +644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Clients routes
+  // Clients routes - Ahora consolidados en users
   app.get("/api/clients", authenticateToken, async (req: Request, res: Response) => {
     try {
       const { search, limit = 50 } = req.query;
@@ -687,6 +685,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Ruta para obtener vehículos de un cliente (ahora desde users)
+  app.get("/api/users/:id/vehicles", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const vehicles = await dbStorage.getVehiclesByClientId(parseInt(req.params.id));
+      res.json(vehicles);
+    } catch (error) {
+      console.error("Get client vehicles error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Mantener la ruta anterior por compatibilidad temporal
   app.get("/api/clients/:id/vehicles", authenticateToken, async (req: Request, res: Response) => {
     try {
       const vehicles = await dbStorage.getVehiclesByClientId(parseInt(req.params.id));
@@ -1312,7 +1322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Workers/Operators routes
-  app.get("/api/workers", authenticateToken, async (req: Request, res: Response) => {
+  app.get("/api/workers", authenticateToken, isAdmin, async (req: Request, res: Response) => {
     try {
       const workers = await dbStorage.getWorkers();
       res.json(workers);
@@ -1322,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/workers", authenticateToken, async (req: Request, res: Response) => {
+  app.post("/api/workers", authenticateToken, isAdmin, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     
@@ -1631,7 +1641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invoices routes
-  app.get("/api/invoices", authenticateToken, async (req: Request, res: Response) => {
+  app.get("/api/invoices", authenticateToken, isAdmin, async (req: Request, res: Response) => {
     try {
       const { status, limit = 50, fromDate, toDate } = req.query;
       const invoices = await dbStorage.getInvoices({ 
@@ -1648,7 +1658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/invoices/:id", authenticateToken, async (req: Request, res: Response) => {
+  app.get("/api/invoices/:id", authenticateToken, isAdmin, async (req: Request, res: Response) => {
     try {
       const invoice = await dbStorage.getInvoiceById(parseInt(req.params.id));
       if (!invoice) {
@@ -1661,7 +1671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/invoices", authenticateToken, async (req: Request, res: Response) => {
+  app.post("/api/invoices", authenticateToken, isAdmin, async (req: Request, res: Response) => {
     try {
       const { serviceOrderId, items } = req.body as { serviceOrderId: number, items: InvoiceItem[] };
 
@@ -1776,7 +1786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company Settings routes
-  app.get("/api/company-settings", authenticateToken, async (req: Request, res: Response) => {
+  app.get("/api/company-settings", authenticateToken, isAdmin, async (req: Request, res: Response) => {
     try {
       const settings = await dbStorage.getCompanySettings();
       res.json(settings || {});
@@ -1786,7 +1796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/company-settings", authenticateToken, async (req: Request, res: Response) => {
+  app.patch("/api/company-settings", authenticateToken, isAdmin, async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthenticatedRequest;
       if (authReq.user.role !== "admin") {
@@ -1804,7 +1814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Logo upload route
-  app.post("/api/company-settings/logo", authenticateToken, upload.single("logo"), async (req: Request, res: Response) => {
+  app.post("/api/company-settings/logo", authenticateToken, isAdmin, upload.single("logo"), async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthenticatedRequest;
       if (authReq.user.role !== "admin") {
@@ -1818,6 +1828,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const settings = await dbStorage.updateCompanySettings({
+        name: "Mi Taller", // Nombre por defecto
+        nit: "000000000", // NIT por defecto para evitar constraint violation
+        address: "Dirección del Taller", // Dirección por defecto
+        phone: "000-000-0000", // Teléfono por defecto
+        email: "taller@ejemplo.com", // Email por defecto
         logo: `/uploads/${req.file.filename}`
       });
 

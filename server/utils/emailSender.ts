@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { type Invoice } from '@shared/schema';
-import { storage } from '../storage';
+import { dbStorage } from '../storage';
 import { generateInvoicePDF } from './pdfGenerator';
 
 interface EmailConfig {
@@ -14,7 +14,7 @@ interface EmailConfig {
 }
 
 export async function sendInvoiceEmail(invoice: Invoice, recipientEmail: string): Promise<void> {
-  const companySettings = await storage.getCompanySettings();
+  const companySettings = await dbStorage.getCompanySettings();
   if (!companySettings) {
     throw new Error('Configuración de la empresa no encontrada');
   }
@@ -37,7 +37,7 @@ export async function sendInvoiceEmail(invoice: Invoice, recipientEmail: string)
   const pdfPath = await generateInvoicePDF(invoice);
 
   // Obtener información del cliente
-  const client = await storage.getClientByServiceOrder(invoice.serviceOrderId);
+  const client = await dbStorage.getClientByServiceOrder(invoice.serviceOrderId);
   if (!client) {
     throw new Error('Cliente no encontrado');
   }

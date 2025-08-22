@@ -1,0 +1,18 @@
+{
+  "default-taller": {
+    "id": "default-taller",
+    "nombre": "Mi Taller",
+    "carpeta": "mi-taller-default",
+    "imagenes": {
+      "logo": "mi-taller-default/logos/logo-1755816058467-cabebb85.png",
+      "banner": "mi-taller-default/banners/banner-1755816072697-3551bc41.png",
+      "favicon": "mi-taller-default/favicons/favicon-1755822419707-e03c92a2.png"
+    }
+  },
+  "67d4966b-302d-4a8c-89f4-0f6b8fc37271": {
+    "id": "67d4966b-302d-4a8c-89f4-0f6b8fc37271",
+    "nombre": "AutoTaller Pro",
+    "carpeta": "autotaller-pro-67d4966b",
+    "imagenes": {}
+  }
+}

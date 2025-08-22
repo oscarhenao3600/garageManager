@@ -58,7 +58,7 @@ export default function CompanySettingsPage() {
   const [, setLogoFile] = useState<File | null>(null);
 
   // Redireccionar si el usuario no es admin
-  if (user?.role !== "Admin") {
+  if (user?.role !== "admin") {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-lg text-red-600">

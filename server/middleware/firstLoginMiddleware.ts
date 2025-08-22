@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { storage as dbStorage } from "../storage";
+import { dbStorage } from "../storage";
 
 interface AuthenticatedRequest extends Request {
   user: {

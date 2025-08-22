@@ -3,19 +3,23 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table for authentication and roles
+// Users table for authentication and roles (consolidada con clientes)
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("user"), // superAdmin, admin, operator, user, guest
+  role: text("role").notNull().default("user"), // superAdmin, admin, operator, client, user, guest
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   phone: text("phone"),
   documentNumber: text("document_number").unique(),
+  // Campos adicionales para clientes (consolidados desde tabla clients)
+  address: text("address"),
+  city: text("city"),
+  department: text("department"),
   isActive: boolean("is_active").notNull().default(true),
-  firstLogin: boolean("first_login").notNull().default(true), // Nuevo campo para primera sesión
+  firstLogin: boolean("first_login").notNull().default(true), // Para primera sesión
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -37,25 +41,25 @@ export const companySettings = pgTable("company_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Clients table
-export const clients = pgTable("clients", {
-  id: serial("id").primaryKey(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  documentNumber: text("document_number").notNull().unique(),
-  email: text("email"),
-  phone: text("phone").notNull(),
-  address: text("address"),
-  city: text("city"),
-  department: text("department"),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+// Clients table - DEPRECATED: Consolidada en users
+// export const clients = pgTable("clients", {
+//   id: serial("id").primaryKey(),
+//   firstName: text("first_name").notNull(),
+//   lastName: text("last_name").notNull(),
+//   documentNumber: text("document_number").notNull().unique(),
+//   email: text("email"),
+//   phone: text("phone").notNull(),
+//   address: text("address"),
+//   city: text("city"),
+//   department: text("department"),
+//   isActive: boolean("is_active").notNull().default(true),
+//   createdAt: timestamp("created_at").notNull().defaultNow(),
+// });
 
-// Vehicles table
+// Vehicles table - Actualizada para usar users.id en lugar de clients.id
 export const vehicles = pgTable("vehicles", {
   id: serial("id").primaryKey(),
-  clientId: integer("client_id").notNull().references(() => clients.id),
+  clientId: integer("client_id").notNull().references(() => users.id), // Ahora referencia users.id
   plate: text("plate").notNull().unique(),
   brand: text("brand").notNull(),
   model: text("model").notNull(),
@@ -63,10 +67,10 @@ export const vehicles = pgTable("vehicles", {
   color: text("color"),
   vin: text("vin"),
   engineNumber: text("engine_number"),
-  vehicleType: text("vehicle_type").notNull().default("sedan"), // nuevo campo
+  vehicleType: text("vehicle_type").notNull().default("sedan"),
   soatExpiry: timestamp("soat_expiry"),
   technicalInspectionExpiry: timestamp("technical_inspection_expiry"),
-  mileage: integer("mileage"), // <-- NUEVO CAMPO
+  mileage: integer("mileage"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -263,16 +267,16 @@ export const usersRelations = relations(users, ({ many }) => ({
   receivedNotifications: many(notifications, { relationName: "toUser" }),
 }));
 
-export const clientsRelations = relations(clients, ({ many }) => ({
+export const clientsRelations = relations(users, ({ many }) => ({ // Changed from clients to users
   vehicles: many(vehicles),
   serviceOrders: many(serviceOrders),
   notifications: many(notifications),
 }));
 
 export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
-  client: one(clients, {
+  client: one(users, { // Changed from clients to users
     fields: [vehicles.clientId],
-    references: [clients.id],
+    references: [users.id],
   }),
   vehicleType: one(vehicleTypes, {
     fields: [vehicles.vehicleType],
@@ -310,9 +314,9 @@ export const serviceOrderChecklistRelations = relations(serviceOrderChecklist, (
 }));
 
 export const serviceOrdersRelations = relations(serviceOrders, ({ one, many }) => ({
-  client: one(clients, {
+  client: one(users, { // Changed from clients to users
     fields: [serviceOrders.clientId],
-    references: [clients.id],
+    references: [users.id],
   }),
   vehicle: one(vehicles, {
     fields: [serviceOrders.vehicleId],
@@ -389,7 +393,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
-export const insertClientSchema = createInsertSchema(clients).omit({
+export const insertClientSchema = createInsertSchema(users).omit({ // Changed from clients to users
   id: true,
   createdAt: true,
 });
@@ -459,7 +463,7 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type Client = typeof clients.$inferSelect;
+export type Client = typeof users.$inferSelect; // Changed from clients to users
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;

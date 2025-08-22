@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ClipboardList, Car, DollarSign, HardHat, Plus, UserPlus, Package, BarChart3, ArrowUp, Clock, Users, CheckCircle, AlertTriangle, Calendar } from "lucide-react";
 import NewOrderModal from "@/components/modals/new-order-modal";
 import NewClientModal from "@/components/modals/new-client-modal";
+import AdminDashboard from "@/components/AdminDashboard";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
@@ -16,7 +17,24 @@ export default function Dashboard() {
   // Verificar roles de usuario
   const isClient = user?.role === 'user' || user?.role === 'client';
   const isOperator = user?.role === 'operator';
+  const isAdmin = user?.role === 'admin' || user?.role === 'superAdmin';
   const canViewAllStats = !isClient && !isOperator; // Solo admin ve stats generales
+
+  // Debug: Log del usuario y roles
+  console.log('🔍 Dashboard User Debug:', {
+    user,
+    userRole: user?.role,
+    isAdmin,
+    isClient,
+    isOperator,
+    canViewAllStats
+  });
+
+  // Si es administrador, mostrar el dashboard administrativo
+  if (isAdmin) {
+    console.log('✅ Redirigiendo a AdminDashboard');
+    return <AdminDashboard />;
+  }
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['/api/dashboard/stats'],
