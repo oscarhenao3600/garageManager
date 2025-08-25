@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useTallerImages } from "@/hooks/useTallerImages";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
@@ -19,12 +20,14 @@ import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
 import FirstLoginModal from "@/components/FirstLoginModal";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
+
+  // Usar el hook para cargar y aplicar las imágenes del taller globalmente
+  useTallerImages();
 
   // Verificar si es primera sesión
   const { data: firstLoginData } = useQuery({
@@ -36,7 +39,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   // Mostrar modal si es primera sesión
   useEffect(() => {
-    if (firstLoginData?.isFirstLogin) {
+    if (firstLoginData && typeof firstLoginData === 'object' && 'isFirstLogin' in firstLoginData && firstLoginData.isFirstLogin) {
       setShowFirstLoginModal(true);
     }
   }, [firstLoginData]);

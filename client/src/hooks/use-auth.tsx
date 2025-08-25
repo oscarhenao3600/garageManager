@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (userData) {
-      setUser(userData);
+      setUser(userData as User);
     }
   }, [userData]);
 

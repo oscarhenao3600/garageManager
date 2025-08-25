@@ -72,7 +72,6 @@ export default function OperatorOrderManagement() {
   const [showVehicleHistoryDialog, setShowVehicleHistoryDialog] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [selectedOrderForNotification, setSelectedOrderForNotification] = useState<ServiceOrder | null>(null);
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'assigned' | 'available'>('assigned');
@@ -190,12 +189,12 @@ export default function OperatorOrderManagement() {
   });
 
   const handleTakeOrder = async (orderId: number) => {
-    setSelectedOrder(assignedOrders?.find(o => o.id === orderId) || availableOrders?.find(o => o.id === orderId) || null);
+    setSelectedOrder(assignedOrders?.find((o: ServiceOrder) => o.id === orderId) || availableOrders?.find((o: ServiceOrder) => o.id === orderId) || null);
     setShowTakeDialog(true);
   };
 
   const handleReleaseOrder = async (orderId: number) => {
-    setSelectedOrder(assignedOrders?.find(o => o.id === orderId) || null);
+    setSelectedOrder(assignedOrders?.find((o: ServiceOrder) => o.id === orderId) || null);
     setShowReleaseDialog(true);
   };
 
@@ -204,14 +203,11 @@ export default function OperatorOrderManagement() {
     setShowHistoryDialog(true);
   };
 
-  const handleViewVehicleHistory = (vehicleId: number) => {
-    setSelectedVehicleId(vehicleId);
+  const handleViewVehicleHistory = (vehiclePlate: string) => {
+    // Por ahora, usamos un ID temporal basado en la placa
+    // En una implementación real, necesitarías buscar el ID del vehículo por placa
+    setSelectedVehicleId(vehiclePlate.length); // ID temporal basado en la longitud de la placa
     setShowVehicleHistoryDialog(true);
-  };
-
-  const handleCreateNotification = (order: ServiceOrder) => {
-    setSelectedOrderForNotification(order);
-    setShowNotificationModal(true);
   };
 
   const handleTakeOrderConfirm = async () => {
@@ -240,41 +236,6 @@ export default function OperatorOrderManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
-      in_progress: { color: "bg-blue-100 text-blue-800", icon: Wrench },
-      completed: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-      billed: { color: "bg-purple-100 text-purple-800", icon: DollarSign },
-      closed: { color: "bg-gray-100 text-gray-800", icon: CheckCircle },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    const Icon = config.icon;
-
-    return (
-      <Badge className={config.color}>
-        <Icon className="h-3 w-3 mr-1" />
-        {status.replace('_', ' ').toUpperCase()}
-      </Badge>
-    );
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: "bg-gray-100 text-gray-800",
-      medium: "bg-yellow-100 text-yellow-800",
-      high: "bg-orange-100 text-orange-800",
-      urgent: "bg-red-100 text-red-800",
-    };
-
-    return (
-      <Badge className={priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.medium}>
-        {priority.toUpperCase()}
-      </Badge>
-    );
   };
 
   if (loadingAssignedOrders || loadingAvailableOrders || loadingVehicleHistory) {
@@ -340,14 +301,14 @@ export default function OperatorOrderManagement() {
               <h3 className="text-lg font-semibold">Órdenes Asignadas a Mí</h3>
               {assignedOrders && assignedOrders.length > 0 ? (
                 <div className="grid gap-4">
-                  {assignedOrders.map((order) => (
+                  {assignedOrders.map((order: ServiceOrder) => (
                     <OrderCard
                       key={order.id}
                       order={order}
                       onTakeOrder={() => {}} // No se puede tomar una orden ya asignada
                       onReleaseOrder={() => handleReleaseOrder(order.id)}
                       onViewHistory={() => handleViewStatusHistory(order)}
-                      onViewVehicleHistory={() => handleViewVehicleHistory(order.vehicle.id)}
+                      onViewVehicleHistory={() => handleViewVehicleHistory(order.vehicle?.plate || '')}
                       showTakeButton={false}
                       showReleaseButton={true}
                     />
@@ -367,7 +328,7 @@ export default function OperatorOrderManagement() {
               <h3 className="text-lg font-semibold">Órdenes Disponibles para Tomar</h3>
               {availableOrders && availableOrders.length > 0 ? (
                 <div className="grid gap-4">
-                  {availableOrders.map((order) => (
+                  {availableOrders.map((order: ServiceOrder) => (
                     <OrderCard
                       key={order.id}
                       order={order}
@@ -579,9 +540,9 @@ export default function OperatorOrderManagement() {
       <CreateNotificationModal
         open={showNotificationModal}
         onOpenChange={setShowNotificationModal}
-        serviceOrderId={selectedOrderForNotification?.id}
-        orderNumber={selectedOrderForNotification?.orderNumber}
-        orderDescription={selectedOrderForNotification?.description}
+        serviceOrderId={selectedOrder?.id}
+        orderNumber={selectedOrder?.orderNumber}
+        orderDescription={selectedOrder?.description}
       />
     </div>
   );
@@ -752,7 +713,7 @@ function OrderCard({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleCreateNotification(order)}
+            onClick={() => {}} // Removed handleCreateNotification
             className="bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-300"
           >
             <Bell className="h-4 w-4 mr-1" />

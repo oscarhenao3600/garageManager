@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,10 @@ import { useAuth } from "@/hooks/use-auth";
 export default function Dashboard() {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [tallerNombre, setTallerNombre] = useState("Mi Taller");
+  const [tallerNit, setTallerNit] = useState("123456789-0");
+  const [tallerDireccion, setTallerDireccion] = useState("Calle Principal #123, Ciudad");
+  const [tallerTelefono, setTallerTelefono] = useState("+57 300 123 4567");
   const { user } = useAuth();
 
   // Verificar roles de usuario
@@ -21,48 +25,81 @@ export default function Dashboard() {
   const canViewAllStats = !isClient && !isOperator; // Solo admin ve stats generales
 
   // Debug: Log del usuario y roles
-  console.log('🔍 Dashboard User Debug:', {
-    user,
-    userRole: user?.role,
-    isAdmin,
-    isClient,
-    isOperator,
-    canViewAllStats
-  });
+
+  // Función para cargar datos del taller
+  const cargarDatosTaller = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch('/api/company-info', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.name) {
+          setTallerNombre(data.name);
+        }
+        if (data.nit) {
+          setTallerNit(data.nit);
+        }
+        if (data.address) {
+          setTallerDireccion(data.address);
+        }
+        if (data.phone) {
+          setTallerTelefono(data.phone);
+        }
+      }
+    } catch (error) {
+      // Error cargando datos del taller
+    } finally {
+      // setTallerLoading(false); // Eliminado
+    }
+  };
+
+  // Cargar datos del taller al montar el componente
+  useEffect(() => {
+    cargarDatosTaller();
+  }, []);
 
   // Si es administrador, mostrar el dashboard administrativo
   if (isAdmin) {
-    console.log('✅ Redirigiendo a AdminDashboard');
     return <AdminDashboard />;
   }
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats = {}, isLoading: statsLoading } = useQuery({
     queryKey: ['/api/dashboard/stats'],
-    refetchInterval: 30000,
-  });
-
-  // Debug: Log de las estadísticas recibidas
-  console.log('🔍 Dashboard Debug:', {
-    userRole: user?.role,
-    isClient,
-    isOperator,
-    canViewAllStats,
-    stats,
-    statsKeys: stats ? Object.keys(stats) : 'No stats'
   });
 
   const { data: recentOrders = [], isLoading: ordersLoading } = useQuery({
-    queryKey: ['/api/service-orders', { 
-      limit: 5, 
-      userId: user?.id, 
-      userRole: user?.role,
-      // Para clientes, solo mostrar órdenes activas (pending, in_progress)
-      status: (user?.role === 'user' || user?.role === 'client') ? 'active' : undefined
-    }],
+    queryKey: ['/api/service-orders/recent'],
   });
 
   const { data: notifications = [], isLoading: notificationsLoading } = useQuery({
-    queryKey: ['/api/notifications', { limit: 10, unreadOnly: true, userId: user?.id, userRole: user?.role }],
+    queryKey: ['/api/notifications'],
+  });
+
+  // Filtrar órdenes recientes
+  const filteredRecentOrders = (recentOrders as any[]).filter((order: any) => {
+    if (user?.role === 'user' || user?.role === 'client') {
+      return order.status === 'pending' || order.status === 'in_progress';
+    }
+    return true;
+  });
+
+  // Filtrar notificaciones
+  const filteredNotifications = (notifications as any[]).filter((notification: any) => {
+    if (user?.role === 'user' || user?.role === 'client') {
+      return notification.toUserId === user?.id;
+    }
+    return true;
   });
 
   const getStatusColor = (status: string) => {
@@ -124,6 +161,19 @@ export default function Dashboard() {
   return (
     <>
       <div className="p-6 space-y-8">
+        {/* Header con información del taller */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {tallerNombre}
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            {tallerNit} - {tallerDireccion}
+          </p>
+          <p className="text-sm text-gray-600">
+            Teléfono: {tallerTelefono}
+          </p>
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Stats para Admin - Métricas generales del sistema */}
@@ -134,7 +184,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Órdenes Activas</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.activeOrders || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.activeOrders || 0}</p>
                       <p className="text-sm text-green-600 flex items-center">
                         <ArrowUp className="h-3 w-3 mr-1" />
                         +12% vs mes anterior
@@ -152,10 +202,10 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Vehículos en Taller</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.vehiclesInShop || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.vehiclesInShop || 0}</p>
                       <p className="text-sm text-orange-600 flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
-                        {stats?.pendingDelivery || 0} próximos a entregar
+                        {(stats as any)?.pendingDelivery || 0} próximos a entregar
                       </p>
                     </div>
                     <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -170,7 +220,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Facturación Mensual</p>
-                      <p className="text-3xl font-bold text-gray-900">${stats?.monthlyRevenue || '0'}</p>
+                      <p className="text-3xl font-bold text-gray-900">${(stats as any)?.monthlyRevenue || '0'}</p>
                       <p className="text-sm text-green-600 flex items-center">
                         <ArrowUp className="h-3 w-3 mr-1" />
                         +8.2% vs mes anterior
@@ -188,10 +238,10 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Operarios Activos</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.activeWorkers || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.activeWorkers || 0}</p>
                       <p className="text-sm text-gray-600 flex items-center">
                         <Users className="h-3 w-3 mr-1" />
-                        de {stats?.totalWorkers || 0} total
+                        de {(stats as any)?.totalWorkers || 0} total
                       </p>
                     </div>
                     <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -211,7 +261,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Mis Órdenes Pendientes</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.myPendingOrders || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.myPendingOrders || 0}</p>
                       <p className="text-sm text-orange-600 flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
                         Requieren atención
@@ -229,7 +279,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Vehículos Entregados</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.myCompletedOrders || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.myCompletedOrders || 0}</p>
                       <p className="text-sm text-green-600 flex items-center">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Esta semana
@@ -247,7 +297,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Tiempo Promedio</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.myAvgTime || '2.5h'}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.myAvgTime || '2.5h'}</p>
                       <p className="text-sm text-blue-600 flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
                         Por orden
@@ -265,7 +315,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Eficiencia</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.myEfficiency || '95%'}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.myEfficiency || '95%'}</p>
                       <p className="text-sm text-green-600 flex items-center">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Cumplimiento
@@ -288,7 +338,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Mis Órdenes</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.myOrders || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.myOrders || 0}</p>
                       <p className="text-sm text-blue-600 flex items-center">
                         <ClipboardList className="h-3 w-3 mr-1" />
                         Total
@@ -306,7 +356,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">En Proceso</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.myPendingOrders || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.myPendingOrders || 0}</p>
                       <p className="text-sm text-orange-600 flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
                         Pendientes
@@ -324,7 +374,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Completadas</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.myCompletedOrders || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.myCompletedOrders || 0}</p>
                       <p className="text-sm text-green-600 flex items-center">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Este mes
@@ -342,7 +392,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Vehículos</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.myVehicles || 0}</p>
+                      <p className="text-3xl font-bold text-gray-900">{(stats as any)?.myVehicles || 0}</p>
                       <p className="text-sm text-gray-600 flex items-center">
                         <Car className="h-3 w-3 mr-1" />
                         Registrados
@@ -382,13 +432,13 @@ export default function Dashboard() {
                       </div>
                     ))}
                   </div>
-                ) : recentOrders.length === 0 ? (
+                ) : filteredRecentOrders.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     No hay órdenes recientes
                   </div>
                 ) : (
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                    {recentOrders.map((order: any) => (
+                    {filteredRecentOrders.map((order: any) => (
                       <div key={order.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                         <div className="flex items-center space-x-4">
                           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -438,13 +488,13 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
-              ) : notifications.length === 0 ? (
+              ) : filteredNotifications.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   No hay notificaciones pendientes
                 </div>
               ) : (
                 <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                  {notifications.map((notification: any) => (
+                  {filteredNotifications.map((notification: any) => (
                     <div key={notification.id} className={`flex items-start space-x-3 p-3 rounded-lg border ${
                       notification.priority === 'high' ? 'bg-red-50 border-red-200' :
                       notification.priority === 'medium' ? 'bg-orange-50 border-orange-200' :

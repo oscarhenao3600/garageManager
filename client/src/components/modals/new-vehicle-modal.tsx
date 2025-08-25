@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
@@ -12,7 +12,6 @@ import {
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -28,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { Badge } from "@/components/ui/badge";
+import { Info } from "lucide-react";
 
 // Esquema de validación para vehículos
 const vehicleSchema = z.object({
@@ -36,13 +37,14 @@ const vehicleSchema = z.object({
   brand: z.string().min(1, "La marca es obligatoria"),
   model: z.string().min(1, "El modelo es obligatorio"),
   year: z.number().min(1900).max(new Date().getFullYear() + 1),
+  vehicleType: z.string().min(1, "El tipo de vehículo es obligatorio"),
   color: z.string().nullable().optional(),
   vin: z.string().nullable().optional(),
   engineNumber: z.string().nullable().optional(),
   soatExpiry: z.string().nullable().optional(),
   technicalInspectionExpiry: z.string().nullable().optional(),
   mileage: z.number().int().min(0, "El kilometraje debe ser un número positivo").nullable().optional(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 type VehicleFormData = z.infer<typeof vehicleSchema>;
@@ -61,6 +63,11 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
     queryKey: ['/api/clients'],
   });
 
+  // Obtener la lista de tipos de vehículos para el selector
+  const { data: vehicleTypes = [] } = useQuery({
+    queryKey: ['/api/vehicle-types'],
+  });
+
   const form = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
@@ -69,15 +76,22 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
       brand: "",
       model: "",
       year: new Date().getFullYear(),
+      vehicleType: "",
       color: "",
       vin: "",
       engineNumber: "",
       soatExpiry: "",
       technicalInspectionExpiry: "",
-      mileage: undefined, // <-- NUEVO CAMPO
+      mileage: undefined,
       isActive: true,
     },
   });
+
+  // Observar el año del vehículo para determinar si requiere revisión técnica
+  const vehicleYear = form.watch("year");
+  const currentYear = new Date().getFullYear();
+  const yearsSinceManufacture = currentYear - vehicleYear;
+  const isExemptFromTechnicalInspection = yearsSinceManufacture <= 5;
 
   const createVehicleMutation = useMutation({
     mutationFn: async (data: VehicleFormData) => {
@@ -108,7 +122,24 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
 
   const onSubmit = (data: VehicleFormData) => {
     console.log('Datos del vehículo a crear:', data);
+    
+    // Si el vehículo está exento de revisión técnica, limpiar esa fecha
+    if (isExemptFromTechnicalInspection) {
+      data.technicalInspectionExpiry = null;
+    }
+    
     createVehicleMutation.mutate(data);
+  };
+
+  // Función para formatear fecha para input type="date"
+  const formatDateForInput = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
   };
 
   return (
@@ -124,12 +155,12 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Cliente */}
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente Propietario *</FormLabel>
+            <FormItem>
+              <FormLabel>Cliente Propietario *</FormLabel>
+              <Controller
+                control={form.control}
+                name="clientId"
+                render={({ field }) => (
                   <Select 
                     onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} 
                     value={field.value?.toString()}
@@ -140,70 +171,70 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {clients.map((client: any) => (
+                      {(clients as any[]).map((client: any) => (
                         <SelectItem key={client.id} value={client.id.toString()}>
                           {client.firstName} {client.lastName} - {client.documentNumber}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                )}
+              />
+              <FormMessage />
+            </FormItem>
 
             {/* Información básica del vehículo */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="plate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Placa *</FormLabel>
+              <FormItem>
+                <FormLabel>Placa *</FormLabel>
+                <Controller
+                  control={form.control}
+                  name="plate"
+                  render={({ field }) => (
                     <FormControl>
                       <Input {...field} placeholder="ABC123" />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
 
-              <FormField
-                control={form.control}
-                name="brand"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Marca *</FormLabel>
+              <FormItem>
+                <FormLabel>Marca *</FormLabel>
+                <Controller
+                  control={form.control}
+                  name="brand"
+                  render={({ field }) => (
                     <FormControl>
                       <Input {...field} placeholder="Toyota" />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="model"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modelo *</FormLabel>
+              <FormItem>
+                <FormLabel>Modelo *</FormLabel>
+                <Controller
+                  control={form.control}
+                  name="model"
+                  render={({ field }) => (
                     <FormControl>
                       <Input {...field} placeholder="Corolla" />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
 
-              <FormField
-                control={form.control}
-                name="year"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Año *</FormLabel>
+              <FormItem>
+                <FormLabel>Año *</FormLabel>
+                <Controller
+                  control={form.control}
+                  name="year"
+                  render={({ field }) => (
                     <FormControl>
                       <Input 
                         type="number" 
@@ -213,19 +244,55 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
                         max={new Date().getFullYear() + 1}
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel>Tipo de Vehículo *</FormLabel>
+                <Controller
+                  control={form.control}
+                  name="vehicleType"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {(vehicleTypes as any[]).map((type: any) => (
+                          <SelectItem key={type.id} value={type.name}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
             </div>
 
+            {/* Información sobre exoneración de revisión técnica */}
+            {isExemptFromTechnicalInspection && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <Info className="h-4 w-4 text-blue-600" />
+                <div className="text-sm text-blue-800">
+                  <strong>Exonerado de Revisión Técnica:</strong> Este vehículo ({vehicleYear}) tiene {5 - yearsSinceManufacture} año(s) restante(s) de exoneración. 
+                  No es necesario establecer fecha de vencimiento de revisión técnica.
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Color</FormLabel>
+              <FormItem>
+                <FormLabel>Color</FormLabel>
+                <Controller
+                  control={form.control}
+                  name="color"
+                  render={({ field }) => (
                     <FormControl>
                       <Input 
                         {...field} 
@@ -234,17 +301,17 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
                         onChange={(e) => field.onChange(e.target.value || null)}
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
 
-              <FormField
-                control={form.control}
-                name="vin"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Número VIN</FormLabel>
+              <FormItem>
+                <FormLabel>Número VIN</FormLabel>
+                <Controller
+                  control={form.control}
+                  name="vin"
+                  render={({ field }) => (
                     <FormControl>
                       <Input 
                         {...field} 
@@ -253,18 +320,18 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
                         onChange={(e) => field.onChange(e.target.value || null)}
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
             </div>
 
-            <FormField
-              control={form.control}
-              name="engineNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número de Motor</FormLabel>
+            <FormItem>
+              <FormLabel>Número de Motor</FormLabel>
+              <Controller
+                control={form.control}
+                name="engineNumber"
+                render={({ field }) => (
                   <FormControl>
                     <Input 
                       {...field} 
@@ -273,18 +340,18 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
                       onChange={(e) => field.onChange(e.target.value || null)}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                )}
+              />
+              <FormMessage />
+            </FormItem>
 
             {/* Campo de Kilometraje */}
-            <FormField
-              control={form.control}
-              name="mileage"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Kilometraje</FormLabel>
+            <FormItem>
+              <FormLabel>Kilometraje</FormLabel>
+              <Controller
+                control={form.control}
+                name="mileage"
+                render={({ field }) => (
                   <FormControl>
                     <Input
                       type="number"
@@ -295,54 +362,74 @@ export default function NewVehicleModal({ open, onOpenChange }: NewVehicleModalP
                       onChange={e => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                )}
+              />
+              <FormMessage />
+            </FormItem>
 
             {/* Fechas de vencimiento */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="soatExpiry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vencimiento SOAT</FormLabel>
+              <FormItem>
+                <FormLabel>Vencimiento SOAT</FormLabel>
+                <Controller
+                  control={form.control}
+                  name="soatExpiry"
+                  render={({ field }) => (
                     <FormControl>
                       <Input 
                         type="date" 
-                        value={field.value || ''}
+                        value={formatDateForInput(field.value)}
                         onChange={(e) => {
                           const date = e.target.value;
-                          field.onChange(date ? new Date(date).toISOString() : null);
+                          if (date) {
+                            const selectedDate = new Date(date);
+                            // Asegurar que la fecha se guarde en formato ISO
+                            field.onChange(selectedDate.toISOString());
+                          } else {
+                            field.onChange(null);
+                          }
                         }}
+                        min={new Date().toISOString().split('T')[0]} // No permitir fechas pasadas
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
 
-              <FormField
-                control={form.control}
-                name="technicalInspectionExpiry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vencimiento Revisión Técnica</FormLabel>
+              <FormItem>
+                <FormLabel>
+                  Vencimiento Revisión Técnica
+                  {isExemptFromTechnicalInspection && (
+                    <Badge variant="secondary" className="ml-2">Exonerado</Badge>
+                  )}
+                </FormLabel>
+                <Controller
+                  control={form.control}
+                  name="technicalInspectionExpiry"
+                  render={({ field }) => (
                     <FormControl>
                       <Input 
                         type="date" 
-                        value={field.value || ''}
+                        value={formatDateForInput(field.value)}
                         onChange={(e) => {
                           const date = e.target.value;
-                          field.onChange(date ? new Date(date).toISOString() : null);
+                          if (date) {
+                            const selectedDate = new Date(date);
+                            field.onChange(selectedDate.toISOString());
+                          } else {
+                            field.onChange(null);
+                          }
                         }}
+                        min={new Date().toISOString().split('T')[0]} // No permitir fechas pasadas
+                        disabled={isExemptFromTechnicalInspection}
+                        className={isExemptFromTechnicalInspection ? "opacity-50 cursor-not-allowed" : ""}
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
             </div>
 
             <div className="flex justify-end space-x-4 pt-4">

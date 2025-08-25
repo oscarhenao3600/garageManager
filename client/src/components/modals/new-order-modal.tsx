@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -13,7 +13,6 @@ import {
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -29,13 +28,20 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertServiceOrderSchema } from "@shared/schema";
 
-const formSchema = insertServiceOrderSchema.extend({
-  clientId: z.coerce.number().min(1, "Debe seleccionar un cliente"),
-  vehicleId: z.coerce.number().min(1, "Debe seleccionar un vehículo"),
-  operatorId: z.string().nullable().transform(val => val === "none" ? null : val),
+const formSchema = z.object({
+  clientId: z.number().min(1, "Debe seleccionar un cliente"),
+  vehicleId: z.number().min(1, "Debe seleccionar un vehículo"),
+  operatorId: z.string().nullable(),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
+  status: z.string().optional(),
+  priority: z.string().optional(),
+  estimatedCost: z.number().optional(),
+  finalCost: z.number().optional(),
+  startDate: z.date().optional(),
+  completionDate: z.date().optional(),
+  takenBy: z.number().optional(),
+  takenAt: z.date().optional(),
 });
 
 interface NewOrderModalProps {
@@ -144,7 +150,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="clientId"
                 render={({ field }) => (
@@ -175,7 +181,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
                 )}
               />
 
-              <FormField
+              <Controller
                 control={form.control}
                 name="vehicleId"
                 render={({ field }) => (
@@ -214,7 +220,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
               />
             </div>
 
-            <FormField
+            <Controller
               control={form.control}
               name="description"
               render={({ field }) => (
@@ -234,7 +240,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
@@ -258,7 +264,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
                 )}
               />
 
-              <FormField
+              <Controller
                 control={form.control}
                 name="operatorId"
                 render={({ field }) => (

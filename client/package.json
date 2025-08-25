@@ -21,11 +21,18 @@
     "vite": "^7.0.5"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.1",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-toast": "^1.2.15",
     "@types/pg": "^8.15.4",
     "chart.js": "^4.5.0",
+    "lucide-react": "^0.541.0",
     "pg": "^8.16.3",
     "react": "^19.1.1",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-hook-form": "^7.62.0",
+    "zod": "^4.0.17"
   }
 }

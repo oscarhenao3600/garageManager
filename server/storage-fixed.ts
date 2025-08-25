@@ -250,7 +250,6 @@ export class DatabaseStorage implements IStorage {
 
   // Service Orders
   async getServiceOrders(params: { status?: string; limit?: number; userId?: number; userRole?: string }): Promise<ServiceOrder[]> {
-    console.log('🔍 Obteniendo órdenes de servicio con parámetros:', params);
 
     const query = db
       .select({
@@ -287,10 +286,8 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users.as('operator'), eq(serviceOrders.operatorId, sql`operator.id`));
 
     // Filtrar por rol del usuario
-    console.log('Filtrando órdenes por rol:', params.userRole, 'userId:', params.userId);
     
     if ((params.userRole === 'user' || params.userRole === 'client') && params.userId) {
-      console.log('🔍 Filtrando para CLIENTE con userId:', params.userId);
       
       // Los clientes solo pueden ver órdenes donde son el cliente (clientId = userId)
       // o órdenes de sus propios vehículos
@@ -300,11 +297,9 @@ export class DatabaseStorage implements IStorage {
         .where(eq(vehicles.clientId, params.userId));
       
       const vehicleIds = clientVehicles.map(v => v.id);
-      console.log('🚗 Vehículos del cliente:', vehicleIds);
       
       if (vehicleIds.length > 0) {
         // Filtrar por clientId (usuario actual) O por vehicleId (vehículos del usuario)
-        console.log('✅ Cliente tiene vehículos, aplicando filtro combinado');
         query.where(
           or(
             eq(serviceOrders.clientId, params.userId),
@@ -313,18 +308,11 @@ export class DatabaseStorage implements IStorage {
         );
       } else {
         // Si el cliente no tiene vehículos, solo puede ver órdenes donde es el cliente
-        console.log('⚠️ Cliente NO tiene vehículos, solo filtrando por clientId');
         query.where(eq(serviceOrders.clientId, params.userId));
       }
-      console.log('🔒 Filtro aplicado para cliente: clientId =', params.userId);
     } else if (params.userRole === 'operator' && params.userId) {
       // Los operarios solo pueden ver órdenes asignadas a ellos
       query.where(eq(serviceOrders.operatorId, params.userId));
-      console.log('Filtro aplicado para operario: operatorId =', params.userId);
-    } else if (params.userRole === 'admin') {
-      console.log('Admin: sin filtros aplicados - acceso completo');
-    } else {
-      console.log('Rol no reconocido o sin userId:', params.userRole, params.userId);
     }
 
     // Filtrar por estado
@@ -350,24 +338,15 @@ export class DatabaseStorage implements IStorage {
     }
 
     const result = await query;
-    console.log(`📊 Resultado: ${result.length} órdenes encontradas para ${params.userRole} ${params.userId}`);
-    if (result.length > 0) {
-      console.log('📋 Primeras órdenes:', result.slice(0, 2).map(o => ({ id: o.id, clientId: o.clientId, vehicleId: o.vehicleId, status: o.status })));
-    }
-    
     return result;
   }
 
   async debugClientOrders(clientId: number): Promise<any> {
-    console.log('🔍 DEBUG: Verificando órdenes para cliente:', clientId);
-    
     // Verificar si el cliente existe
     const [client] = await db
       .select()
       .from(users)
       .where(and(eq(users.id, clientId), eq(users.role, 'client')));
-    
-    console.log('👤 Cliente encontrado:', client ? { id: client.id, firstName: client.firstName, lastName: client.lastName } : 'NO ENCONTRADO');
     
     // Verificar vehículos del cliente
     const clientVehicles = await db
@@ -375,15 +354,11 @@ export class DatabaseStorage implements IStorage {
       .from(vehicles)
       .where(eq(vehicles.clientId, clientId));
     
-    console.log('🚗 Vehículos del cliente:', clientVehicles.length);
-    
     // Verificar órdenes de servicio del cliente
     const clientOrders = await db
       .select()
       .from(serviceOrders)
       .where(eq(serviceOrders.clientId, clientId));
-    
-    console.log('📋 Órdenes de servicio del cliente:', clientOrders.length);
     
     return {
       client,

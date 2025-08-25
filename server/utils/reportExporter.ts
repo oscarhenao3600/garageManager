@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 // Configurar jsPDF para español
-jsPDF.autoTable = autoTable;
+(jsPDF as any).autoTable = autoTable;
 
 export interface ReportData {
   title: string;
@@ -128,7 +128,7 @@ export class ReportExporter {
     if (reportData.filters && reportData.filters.length > 0) {
       worksheetData.push(['Filtros aplicados:']);
       reportData.filters.forEach(filter => {
-        worksheetData.push([filter.label, filter.value]);
+        worksheetData.push([filter.label, String(filter.value)]);
       });
       worksheetData.push(['']);
     }
@@ -144,7 +144,7 @@ export class ReportExporter {
       worksheetData.push(['']);
       worksheetData.push(['Resumen:']);
       reportData.summary.forEach(item => {
-        worksheetData.push([item.label, item.value]);
+        worksheetData.push([item.label, String(item.value)]);
       });
     }
     
@@ -167,9 +167,8 @@ export class ReportExporter {
       const cellAddress = XLSX.utils.encode_cell({ r: headerRow, c: col });
       if (worksheet[cellAddress]) {
         worksheet[cellAddress].s = {
-          font: { bold: true },
-          fill: { fgColor: { rgb: "2952A3" } },
-          font: { color: { rgb: "FFFFFF" } }
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "2952A3" } }
         };
       }
     }

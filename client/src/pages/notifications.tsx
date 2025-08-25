@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import {
   Car,
   Info,
   Check,
-  X,
   Search,
   Settings,
   Trash2
@@ -38,10 +37,7 @@ export default function Notifications() {
   const canConfigureAlerts = !isClient; // Solo admin y operator pueden configurar alertas
 
   const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['/api/notifications', { 
-      unreadOnly: statusFilter === 'unread',
-      limit: 50 
-    }],
+    queryKey: ['/api/notifications'],
   });
 
   const markAsReadMutation = useMutation({
@@ -166,20 +162,24 @@ export default function Notifications() {
     }
   };
 
-  const filteredNotifications = notifications.filter((notification: any) => {
+  // Filtrar notificaciones
+  const filteredNotifications = (notifications as any[]).filter((notification: any) => {
     const matchesSearch = !searchQuery || 
       notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      notification.message.toLowerCase().includes(searchQuery.toLowerCase());
+      notification.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      notification.type.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesType = typeFilter === 'all' || notification.type === typeFilter;
+    const matchesPriority = statusFilter === 'all' || notification.priority === statusFilter;
     const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'read' && notification.isRead) ||
-      (statusFilter === 'unread' && !notification.isRead);
+      (statusFilter === 'unread' && !notification.isRead) ||
+      (statusFilter === 'read' && notification.isRead);
     
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesType && matchesPriority && matchesStatus;
   });
 
-  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
+  // Contar notificaciones no leídas
+  const unreadCount = (notifications as any[]).filter((n: any) => !n.isRead).length;
 
   const handleMarkAsRead = (notificationId: number) => {
     markAsReadMutation.mutate(notificationId);
@@ -217,7 +217,7 @@ export default function Notifications() {
     );
   }
 
-  if (!notifications || notifications.length === 0) {
+  if (!notifications || (notifications as any[]).length === 0) {
     return (
       <div className="p-6 space-y-6">
         {/* Header */}
@@ -334,7 +334,7 @@ export default function Notifications() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Prioridad Alta</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {notifications.filter((n: any) => n.priority === 'high' && !n.isRead).length}
+                  {(notifications as any[]).filter((n: any) => n.priority === 'high' && !n.isRead).length}
                 </p>
               </div>
               <AlertTriangle className="h-8 w-8 text-red-600" />
@@ -348,7 +348,7 @@ export default function Notifications() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Stock Bajo</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {notifications.filter((n: any) => n.type === 'low_stock' && !n.isRead).length}
+                  {(notifications as any[]).filter((n: any) => n.type === 'low_stock' && !n.isRead).length}
                 </p>
               </div>
               <Package className="h-8 w-8 text-orange-600" />
@@ -362,7 +362,7 @@ export default function Notifications() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Documentos</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {notifications.filter((n: any) => 
+                  {(notifications as any[]).filter((n: any) => 
                     (n.type === 'soat_expiry' || n.type === 'technical_inspection') && !n.isRead
                   ).length}
                 </p>
@@ -427,7 +427,7 @@ export default function Notifications() {
             <CardContent className="p-12 text-center">
               <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">
-                {notifications.length === 0 ? "No hay notificaciones para mostrar" : "No hay notificaciones que coincidan con los filtros"}
+                {(notifications as any[]).length === 0 ? "No hay notificaciones para mostrar" : "No hay notificaciones que coincidan con los filtros"}
               </p>
             </CardContent>
           </Card>

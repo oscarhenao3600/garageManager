@@ -153,17 +153,15 @@ async function createAdminUser() {
       );
     `);
 
-    console.log('✅ Usuario administrador y datos de ejemplo creados exitosamente');
-    console.log('');
-    console.log('🔑 Credenciales de acceso:');
-    console.log('   Usuario administrador: admin / admin123');
-    console.log('   Usuario operario: operario / operario123');
-    console.log('');
-    console.log('📊 Datos de ejemplo creados:');
-    console.log('   • 3 clientes con sus vehículos');
-    console.log('   • 5 items de inventario');
-    console.log('   • 3 órdenes de servicio de ejemplo');
-    console.log('   • Notificaciones de vencimiento de SOAT');
+      // Usuario administrador y datos de ejemplo creados exitosamente
+  // Credenciales de acceso:
+  //    Usuario administrador: admin / admin123
+  //    Usuario operario: operario / operario123
+  // Datos de ejemplo creados:
+  //    • 3 clientes con sus vehículos
+  //    • 5 items de inventario
+  //    • 3 órdenes de servicio de ejemplo
+  //    • Notificaciones de vencimiento de SOAT
 
   } catch (error) {
     console.error('❌ Error creando datos iniciales:', error);

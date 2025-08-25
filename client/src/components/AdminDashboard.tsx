@@ -9,11 +9,9 @@ import {
   Package, 
   DollarSign, 
   RefreshCw,
-  TrendingUp,
   AlertTriangle
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-// import { useTaller } from "@/contexts/TallerContext";
 import AdvancedReports from "./AdvancedReports";
 import InteractiveCharts from "./InteractiveCharts";
 import SimpleTallerConfig from "./SimpleTallerConfig";
@@ -65,24 +63,12 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug: Log del AdminDashboard
-  console.log('🔍 AdminDashboard Debug:', {
-    user,
-    userRole: user?.role,
-    isAdmin: user?.role === 'admin' || user?.role === 'superAdmin',
-    tallerNombre,
-    tallerNit,
-    tallerDireccion,
-    tallerTelefono
-  });
+
 
   // Verificar que el usuario sea administrador
   if (user?.role !== 'admin' && user?.role !== 'superAdmin') {
-    console.log('❌ Usuario no es admin, retornando null');
     return null;
   }
-
-  console.log('✅ AdminDashboard renderizando para usuario admin');
 
   // Memoizar datos calculados para evitar recálculos innecesarios
   const calculatedStats = useMemo(() => ({
@@ -119,7 +105,6 @@ export default function AdminDashboard() {
       const dashboardResponse = await fetch('/api/dashboard/stats', { headers });
       if (dashboardResponse.ok) {
         const dashboardData = await dashboardResponse.json();
-        console.log('📊 Dashboard stats:', dashboardData);
         
         setStats(prev => ({
           ...prev,
@@ -184,11 +169,10 @@ export default function AdminDashboard() {
           setStats(prev => ({ ...prev, lowStockItems: lowStock.length }));
         }
       } catch (error) {
-        console.log('Algunas APIs adicionales no están disponibles:', error);
+        // Algunas APIs adicionales no están disponibles
       }
 
     } catch (error) {
-      console.error('Error cargando estadísticas:', error);
       setError('Error interno del servidor');
     } finally {
       setLoading(false);
@@ -198,47 +182,36 @@ export default function AdminDashboard() {
   // Función para cargar datos del taller
   const cargarDatosTaller = useCallback(async () => {
     try {
-      console.log('🔄 Cargando datos del taller en AdminDashboard...');
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('❌ No hay token en AdminDashboard');
         return;
       }
 
-      const response = await fetch('/api/company-settings', {
+      const response = await fetch('/api/company-info', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      console.log('📡 Respuesta de company-settings en AdminDashboard:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Datos recibidos en AdminDashboard:', data);
         
         if (data.name) {
           setTallerNombre(data.name);
-          console.log('✅ Nombre del taller actualizado:', data.name);
         }
         if (data.nit) {
           setTallerNit(data.nit);
-          console.log('✅ NIT del taller actualizado:', data.nit);
         }
         if (data.address) {
           setTallerDireccion(data.address);
-          console.log('✅ Dirección del taller actualizada:', data.address);
         }
         if (data.phone) {
           setTallerTelefono(data.phone);
-          console.log('✅ Teléfono del taller actualizado:', data.phone);
         }
-      } else {
-        console.log('❌ Error en la respuesta:', response.status);
       }
     } catch (error) {
-      console.log('❌ Error cargando datos del taller en AdminDashboard:', error);
+      // Error cargando datos del taller
     } finally {
       setTallerLoading(false);
     }
@@ -251,7 +224,6 @@ export default function AdminDashboard() {
   }, [loadDashboardStats, cargarDatosTaller]);
 
   const handleRefresh = useCallback(() => {
-    console.log('Refreshing dashboard...');
     loadDashboardStats();
   }, [loadDashboardStats]);
 
@@ -315,7 +287,7 @@ export default function AdminDashboard() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="relative">
-          <TabsList className="grid w-full grid-cols-7 bg-gray-100 dark:bg-gray-800">
+          <TabsList className="grid w-full grid-cols-8 bg-gray-100 dark:bg-gray-800">
             <TabsTrigger 
               value="overview" 
               className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 transition-colors"

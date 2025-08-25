@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Wrench, Info, AlertCircle } from "lucide-react";
+import { AlertTriangle, Wrench, Info } from "lucide-react";
 
 interface CreateNotificationModalProps {
   open: boolean;

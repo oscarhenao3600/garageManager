@@ -18,8 +18,8 @@ async function createValidUser() {
     // Generar hash de contraseña
     const hash = await bcrypt.hash(password, saltRounds);
     
-    console.log('Contraseña:', password);
-    console.log('Hash generado:', hash);
+    // Contraseña: ${password}
+    // Hash generado: ${hash}
     
     // Conectar a la base de datos
     const client = await pool.connect();
@@ -54,18 +54,18 @@ async function createValidUser() {
       RETURNING username, email, role;
     `, [hash]);
     
-    console.log('Usuario creado/actualizado:', result.rows[0]);
+    // Usuario creado/actualizado: ${result.rows[0]}
     
     // Verificar que la contraseña funciona
     const isValid = await bcrypt.compare(password, hash);
-    console.log('Hash válido:', isValid);
+    // Hash válido: ${isValid}
     
     client.release();
     await pool.end();
     
-    console.log('\n✅ Usuario creado exitosamente!');
-    console.log('Username: admin_valid');
-    console.log('Password: 123456');
+    // Usuario creado exitosamente!
+    // Username: admin_valid
+    // Password: 123456
     
   } catch (error) {
     console.error('Error:', error);

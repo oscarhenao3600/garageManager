@@ -116,7 +116,7 @@ export default function FirstLoginModal({ open, onOpenChange }: FirstLoginModalP
 
   return (
     <Dialog open={open} onOpenChange={handleCancel} modal>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Shield className="h-6 w-6 text-blue-600" />
@@ -242,7 +242,7 @@ export default function FirstLoginModal({ open, onOpenChange }: FirstLoginModalP
 
         <div className="text-xs text-gray-500 text-center mt-4">
           <p>Usuario: <span className="font-mono">{user?.username}</span></p>
-          <p>Documento: <span className="font-mono">{user?.documentNumber}</span></p>
+          <p>Documento: <span className="font-mono">{user?.username || 'No disponible'}</span></p>
         </div>
       </DialogContent>
     </Dialog>

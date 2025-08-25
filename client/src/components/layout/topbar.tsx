@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Bell, Wrench } from "lucide-react";
+import { Search, Plus, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
@@ -17,13 +17,12 @@ export default function Topbar() {
   const taller = { nombre: tallerNombre }; // Valor dinámico
 
   // Verificar permisos
-  const isClient = user?.role === 'user';
-  const isOperator = user?.role === 'operator';
   const canCreateOrders = user?.role === 'admin'; // Solo admin puede crear órdenes
 
-  const { data: notifications } = useQuery({
+  const { data: notifications = [] } = useQuery({
     queryKey: ['/api/notifications'],
-    select: (data) => data?.filter((n: any) => !n.isRead) || [],
+    select: (data: any) => data?.filter((n: any) => !n.isRead) || [],
+    refetchInterval: 30000, // Refrescar cada 30 segundos
   });
 
   const unreadCount = notifications?.length || 0;
@@ -39,7 +38,7 @@ export default function Topbar() {
       }
 
       // Cargar datos de la empresa
-      const companyResponse = await fetch('/api/company-settings', {
+      const companyResponse = await fetch('/api/company-info', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -55,6 +54,7 @@ export default function Topbar() {
       }
 
       // Cargar imágenes del taller
+      console.log('🔄 Intentando cargar imágenes del taller...');
       const imagesResponse = await fetch('/api/images/default-taller', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -62,12 +62,25 @@ export default function Topbar() {
         }
       });
 
+      console.log('📡 Respuesta de imágenes:', imagesResponse.status, imagesResponse.statusText);
+
       if (imagesResponse.ok) {
         const imagesData = await imagesResponse.json();
+        console.log('📊 Datos de imágenes recibidos:', imagesData);
         if (imagesData.imagenes && imagesData.imagenes.banner) {
-          const bannerUrl = `/uploads/talleres/${imagesData.imagenes.banner}`;
+          const bannerUrl = `http://localhost:5000/uploads/talleres/${imagesData.imagenes.banner}`;
           setTallerBanner(bannerUrl);
           console.log('🖼️ Banner encontrado en Topbar:', bannerUrl);
+        } else {
+          console.log('⚠️ No se encontró banner en los datos:', imagesData.imagenes);
+        }
+      } else {
+        console.log('❌ Error cargando imágenes:', imagesResponse.status, imagesResponse.statusText);
+        try {
+          const errorData = await imagesResponse.json();
+          console.log('❌ Detalles del error:', errorData);
+        } catch (e) {
+          console.log('❌ No se pudo leer el error');
         }
       }
     } catch (error) {
@@ -87,7 +100,7 @@ export default function Topbar() {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="bg-white border-b border-gray-200 px-6 py-4" data-banner="true">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {tallerBanner ? (
@@ -95,6 +108,7 @@ export default function Topbar() {
                 src={tallerBanner} 
                 alt={`Banner de ${tallerNombre}`}
                 className="h-16 w-32 object-cover rounded-lg border border-gray-200 shadow-sm"
+                data-banner="true"
               />
             ) : (
               <div className="h-16 w-32 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
@@ -103,7 +117,15 @@ export default function Topbar() {
             )}
             
             {/* Información del taller */}
-            <div>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <img 
+                  src="" 
+                  alt="Logo del taller" 
+                  className="w-full h-full object-contain rounded-lg"
+                  data-logo="true"
+                />
+              </div>
               <h2 className="text-2xl font-bold text-gray-900">
                 {taller ? taller.nombre : 'Dashboard'}
               </h2>

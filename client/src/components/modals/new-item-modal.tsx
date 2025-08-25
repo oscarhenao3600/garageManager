@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,8 +36,8 @@ const formSchema = z.object({
   description: z.string().optional(),
   category: z.string().min(1, "Categoría requerida"),
   unit: z.string().min(1, "Unidad requerida"),
-  unitCost: z.number().min(0, "Costo debe ser mayor a 0"),
-  sellingPrice: z.number().min(0, "Precio debe ser mayor a 0"),
+  unitCost: z.string().min(1, "Costo requerido"),
+  sellingPrice: z.string().min(1, "Precio requerido"),
   currentStock: z.number().min(0, "Stock actual debe ser mayor o igual a 0"),
   minStock: z.number().min(0, "Stock mínimo debe ser mayor o igual a 0"),
   maxStock: z.number().min(0, "Stock máximo debe ser mayor a 0"),
@@ -62,8 +61,8 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
       description: "",
       category: "",
       unit: "",
-      unitCost: 0,
-      sellingPrice: 0,
+      unitCost: "0",
+      sellingPrice: "0",
       currentStock: 0,
       minStock: 0,
       maxStock: 0,
@@ -109,7 +108,7 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
       return;
     }
     
-    if (data.unitCost < 0 || data.sellingPrice < 0) {
+    if (parseFloat(data.unitCost) < 0 || parseFloat(data.sellingPrice) < 0) {
       toast({
         title: "Error de validación",
         description: "Los precios no pueden ser negativos.",
@@ -130,8 +129,8 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
     // Convertir campos decimales a string para Drizzle
     const processedData = {
       ...data,
-      unitCost: data.unitCost.toString(),
-      sellingPrice: data.sellingPrice.toString(),
+      unitCost: data.unitCost,
+      sellingPrice: data.sellingPrice,
     };
     
     console.log('Datos procesados:', processedData);
@@ -285,7 +284,7 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                         {...field}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value);
-                          field.onChange(isNaN(value) ? 0 : value);
+                          field.onChange(isNaN(value) ? "0" : value.toString());
                         }}
                       />
                     </FormControl>
@@ -309,7 +308,7 @@ export default function NewItemModal({ open, onOpenChange }: NewItemModalProps) 
                         {...field}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value);
-                          field.onChange(isNaN(value) ? 0 : value);
+                          field.onChange(isNaN(value) ? "0" : value.toString());
                         }}
                       />
                     </FormControl>

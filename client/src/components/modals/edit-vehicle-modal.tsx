@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -12,7 +12,6 @@ import {
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -29,6 +28,7 @@ const editVehicleSchema = z.object({
   brand: z.string().optional(),
   model: z.string().optional(),
   year: z.number().optional(),
+  vehicleType: z.string().optional(),
   color: z.string().nullable().optional(),
   vin: z.string().nullable().optional(),
   engineNumber: z.string().nullable().optional(),
@@ -58,6 +58,7 @@ export default function EditVehicleModal({ open, onOpenChange, vehicle }: EditVe
       brand: vehicle?.brand,
       model: vehicle?.model,
       year: vehicle?.year,
+      vehicleType: vehicle?.vehicleType,
       color: vehicle?.color ?? '',
       vin: vehicle?.vin ?? '',
       engineNumber: vehicle?.engineNumber ?? '',
@@ -118,65 +119,78 @@ export default function EditVehicleModal({ open, onOpenChange, vehicle }: EditVe
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Placa */}
-            <FormField
-              control={form.control}
-              name="plate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Placa</FormLabel>
-                  <FormControl>
-                    <Input {...field} value={field.value ?? ''} placeholder="ABC123" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Marca y Modelo */}
+            {/* Información básica */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
+                control={form.control}
+                name="plate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Placa</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Controller
                 control={form.control}
                 name="brand"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Marca</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value ?? ''} placeholder="Toyota" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="model"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modelo</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ''} placeholder="Corolla" />
+                      <Input {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-            {/* Año y Color */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
+                control={form.control}
+                name="model"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Modelo</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Controller
                 control={form.control}
                 name="year"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Año</FormLabel>
                     <FormControl>
-                      <Input type="number" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value))} />
+                      <Input type="number" min={1900} max={new Date().getFullYear() + 1} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Controller
+                control={form.control}
+                name="vehicleType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Vehículo</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Controller
                 control={form.control}
                 name="color"
                 render={({ field }) => (
@@ -190,9 +204,8 @@ export default function EditVehicleModal({ open, onOpenChange, vehicle }: EditVe
                 )}
               />
             </div>
-            {/* VIN y Motor */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="vin"
                 render={({ field }) => (
@@ -205,7 +218,7 @@ export default function EditVehicleModal({ open, onOpenChange, vehicle }: EditVe
                   </FormItem>
                 )}
               />
-              <FormField
+              <Controller
                 control={form.control}
                 name="engineNumber"
                 render={({ field }) => (
@@ -220,7 +233,7 @@ export default function EditVehicleModal({ open, onOpenChange, vehicle }: EditVe
               />
             </div>
             {/* Kilometraje */}
-            <FormField
+            <Controller
               control={form.control}
               name="mileage"
               render={({ field }) => (
@@ -235,7 +248,7 @@ export default function EditVehicleModal({ open, onOpenChange, vehicle }: EditVe
             />
             {/* Fechas de vencimiento */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="soatExpiry"
                 render={({ field }) => (
@@ -248,7 +261,7 @@ export default function EditVehicleModal({ open, onOpenChange, vehicle }: EditVe
                   </FormItem>
                 )}
               />
-              <FormField
+              <Controller
                 control={form.control}
                 name="technicalInspectionExpiry"
                 render={({ field }) => (
@@ -263,16 +276,16 @@ export default function EditVehicleModal({ open, onOpenChange, vehicle }: EditVe
               />
             </div>
             {/* Estado */}
-            <FormField
+            <Controller
               control={form.control}
               name="isActive"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Estado</FormLabel>
                   <FormControl>
-                    <select {...field} className="input">
-                      <option value={true}>Activo</option>
-                      <option value={false}>Inactivo</option>
+                    <select {...field} className="input" value={field.value ? "true" : "false"} onChange={(e) => field.onChange(e.target.value === "true")}>
+                      <option value="true">Activo</option>
+                      <option value="false">Inactivo</option>
                     </select>
                   </FormControl>
                   <FormMessage />

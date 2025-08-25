@@ -45,7 +45,6 @@ export class WebSocketManager {
     });
 
     this.setupEventHandlers();
-    console.log('🚀 WebSocket server initialized');
   }
 
   /**
@@ -55,7 +54,6 @@ export class WebSocketManager {
     if (!this.io) return;
 
     this.io.on('connection', (socket) => {
-      console.log(`🔌 Client connected: ${socket.id}`);
 
       // Autenticación del usuario
       socket.on('authenticate', (data: { userId: number; role: string }) => {
@@ -106,8 +104,6 @@ export class WebSocketManager {
       this.adminConnections.add(socket.id);
     }
 
-    console.log(`✅ User ${userId} (${role}) authenticated on socket ${socket.id}`);
-    
     // Enviar confirmación
     socket.emit('authenticated', { success: true, userId, role });
   }
@@ -118,7 +114,6 @@ export class WebSocketManager {
   private handleJoinAdminRoom(socket: any): void {
     socket.join('admin-room');
     this.adminConnections.add(socket.id);
-    console.log(`👑 Admin joined admin room: ${socket.id}`);
   }
 
   /**
@@ -126,7 +121,6 @@ export class WebSocketManager {
    */
   private handleJoinUserRoom(socket: any, userId: number): void {
     socket.join(`user-${userId}`);
-    console.log(`👤 User ${userId} joined user room on socket ${socket.id}`);
   }
 
   /**
@@ -146,7 +140,6 @@ export class WebSocketManager {
       }
     }
 
-    console.log(`🔌 Client disconnected: ${socket.id}`);
   }
 
   /**
@@ -158,9 +151,7 @@ export class WebSocketManager {
     const userConnection = this.userConnections.get(userId);
     if (userConnection) {
       this.io.to(`user-${userId}`).emit('notification', notification);
-      console.log(`📨 Notification sent to user ${userId}: ${notification.title}`);
     } else {
-      console.log(`⚠️ User ${userId} not connected, notification queued`);
       // TODO: Implementar cola de notificaciones para usuarios offline
     }
   }
@@ -172,7 +163,6 @@ export class WebSocketManager {
     if (!this.io) return;
 
     this.io.to('admin-room').emit('admin-notification', notification);
-    console.log(`📨 Admin notification sent: ${notification.title}`);
   }
 
   /**
@@ -182,7 +172,6 @@ export class WebSocketManager {
     if (!this.io) return;
 
     this.io.emit('system-notification', notification);
-    console.log(`📢 System notification sent: ${notification.title}`);
   }
 
   /**
@@ -222,8 +211,6 @@ export class WebSocketManager {
    * Manejar respuesta a notificación
    */
   private handleNotificationResponse(socket: any, data: { notificationId: string; response: string }): void {
-    console.log(`📝 Notification response from ${socket.id}:`, data);
-    
     // TODO: Implementar lógica para procesar respuestas
     // Por ejemplo, actualizar estado de la notificación en la base de datos
     

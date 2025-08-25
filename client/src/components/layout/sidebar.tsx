@@ -80,7 +80,7 @@ export default function Sidebar() {
       }
 
       // Cargar datos de la empresa
-      const companyResponse = await fetch('/api/company-settings', {
+      const companyResponse = await fetch('/api/company-info', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

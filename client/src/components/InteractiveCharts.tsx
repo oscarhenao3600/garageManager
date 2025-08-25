@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import { useMemo, memo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -84,7 +84,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
     maintainAspectRatio: false,
     animation: {
       duration: 1000,
-      easing: 'easeInOutQuart',
+      easing: 'easeInOutQuart' as const,
     },
     plugins: {
       legend: {
@@ -93,7 +93,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
           color: '#374151',
           font: {
             size: 12,
-            weight: '600',
+            weight: 'bold' as const,
           },
           usePointStyle: true,
           padding: 20,
@@ -105,7 +105,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
         color: '#111827',
         font: {
           size: 16,
-          weight: 'bold',
+          weight: 'bold' as const,
         },
         padding: {
           top: 10,
@@ -192,7 +192,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
     maintainAspectRatio: false,
     animation: {
       duration: 1500,
-      easing: 'easeInOutQuart',
+      easing: 'easeInOutQuart' as const,
     },
     plugins: {
       legend: {
@@ -201,7 +201,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
           color: '#374151',
           font: {
             size: 12,
-            weight: '600',
+            weight: 'bold' as const,
           },
           padding: 20,
           usePointStyle: true,
@@ -213,7 +213,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
         color: '#111827',
         font: {
           size: 16,
-          weight: 'bold',
+          weight: 'bold' as const,
         },
         padding: {
           top: 10,
@@ -268,7 +268,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
     maintainAspectRatio: false,
     animation: {
       duration: 1200,
-      easing: 'easeInOutQuart',
+      easing: 'easeInOutQuart' as const,
     },
     plugins: {
       legend: {
@@ -277,7 +277,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
           color: '#374151',
           font: {
             size: 12,
-            weight: '600',
+            weight: 'bold' as const,
           },
           usePointStyle: true,
         },
@@ -288,7 +288,7 @@ const InteractiveCharts = memo(({ data }: InteractiveChartsProps) => {
         color: '#111827',
         font: {
           size: 16,
-          weight: 'bold',
+          weight: 'bold' as const,
         },
         padding: {
           top: 10,

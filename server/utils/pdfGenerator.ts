@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { type Invoice } from '@shared/schema';
+import { type Invoice } from '../../shared/schema';
 
 interface InvoiceItem {
   description: string;
@@ -28,7 +28,7 @@ export async function generateInvoicePDF(invoice: InvoiceWithItems): Promise<str
     fs.mkdirSync(pdfDir, { recursive: true });
   }
 
-  const filename = `invoice-${invoice.invoiceNumber}.pdf`;
+  const filename = `invoice-${invoice.id}.pdf`;
   const filePath = path.join(pdfDir, filename);
   const writeStream = fs.createWriteStream(filePath);
 
@@ -56,12 +56,12 @@ export async function generateInvoicePDF(invoice: InvoiceWithItems): Promise<str
      .text('FACTURA', 50, 150)
      .font('Helvetica')
      .fontSize(10)
-     .text(`Número: ${invoice.invoiceNumber}`, 50, 170)
+     .text(`Número: ${invoice.id}`, 50, 170)
      .text(`Fecha: ${invoice.createdAt.toLocaleDateString('es-CO')}`, 50, 185)
-     .text(`Vencimiento: ${invoice.dueDate.toLocaleDateString('es-CO')}`, 50, 200);
+     .text(`Vencimiento: ${invoice.dueDate ? invoice.dueDate.toLocaleDateString('es-CO') : 'No definido'}`, 50, 200);
 
   // Información del cliente
-  const client = await dbStorage.getClientByServiceOrder(invoice.serviceOrderId);
+  const client = await dbStorage.getUserById(invoice.clientId);
   if (client) {
     doc.text(`Cliente: ${client.firstName} ${client.lastName}`, 300, 170)
        .text(`Documento: ${client.documentNumber}`, 300, 185)
