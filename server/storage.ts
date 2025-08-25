@@ -505,6 +505,11 @@ export class DatabaseStorage implements IStorage {
 
   async createServiceOrder(order: InsertServiceOrder): Promise<ServiceOrder> {
     try {
+      // Validar campos obligatorios
+      if (!order.clientId || !order.vehicleId || !order.description) {
+        throw new Error('clientId, vehicleId y description son campos obligatorios');
+      }
+
       // Generar orderNumber automáticamente
       const orderCount = await this.getServiceOrderCount();
       
@@ -574,10 +579,10 @@ export class DatabaseStorage implements IStorage {
   }): Promise<void> {
     await db.insert(serviceOrderStatusHistory).values({
       serviceOrderId: history.serviceOrderId,
-      oldStatus: history.oldStatus,
+      previousStatus: history.oldStatus,
       newStatus: history.newStatus,
       comment: history.comment,
-      userId: history.userId,
+      changedBy: history.userId,
       timestamp: new Date()
     });
   }
@@ -615,6 +620,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createClient(client: InsertClient): Promise<Client> {
+    // Validar campos obligatorios
+    if (!client.firstName || !client.lastName || !client.email) {
+      throw new Error('firstName, lastName y email son campos obligatorios');
+    }
+    
     const [newClient] = await db.insert(clients).values(client).returning();
     return newClient;
   }
@@ -705,6 +715,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVehicle(vehicle: InsertVehicle): Promise<Vehicle> {
+    // Validar campos obligatorios
+    if (!vehicle.clientId || !vehicle.plate || !vehicle.brand || !vehicle.model || !vehicle.year) {
+      throw new Error('clientId, plate, brand, model y year son campos obligatorios');
+    }
+
     // Procesar las fechas antes de insertar
     const processedVehicle = {
       ...vehicle,
@@ -809,6 +824,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem> {
+    // Validar campos obligatorios
+    if (!item.name || !item.category || !item.currentStock || !item.unitCost) {
+      throw new Error('name, category, currentStock y unitCost son campos obligatorios');
+    }
+    
     const [newItem] = await db.insert(inventoryItems).values(item).returning();
     return newItem;
   }
@@ -1043,6 +1063,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    // Validar campos obligatorios
+    if (!invoice.serviceOrderId || !invoice.clientId || !invoice.vehicleId || !invoice.invoiceNumber || !invoice.subtotal || !invoice.total) {
+      throw new Error('serviceOrderId, clientId, vehicleId, invoiceNumber, subtotal y total son campos obligatorios');
+    }
+    
     const [newInvoice] = await db.insert(invoices).values(invoice).returning();
     return newInvoice;
   }
@@ -1084,6 +1109,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVehicleType(vehicleType: InsertVehicleType): Promise<VehicleType> {
+    // Validar campos obligatorios
+    if (!vehicleType.name) {
+      throw new Error('name es un campo obligatorio');
+    }
+    
     const [newType] = await db.insert(vehicleTypes).values(vehicleType).returning();
     return newType;
   }
@@ -1118,6 +1148,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createChecklistItem(item: InsertChecklistItem): Promise<ChecklistItem> {
+    // Validar campos obligatorios
+    if (!item.name || !item.category) {
+      throw new Error('name y category son campos obligatorios');
+    }
+    
     const [newItem] = await db.insert(checklistItems).values(item).returning();
     return newItem;
   }
@@ -1141,6 +1176,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createServiceOrderChecklist(item: InsertServiceOrderChecklist): Promise<ServiceOrderChecklist> {
+    // Validar campos obligatorios
+    if (!item.serviceOrderId || !item.checklistItemId) {
+      throw new Error('serviceOrderId y checklistItemId son campos obligatorios');
+    }
+    
     const [newItem] = await db.insert(serviceOrderChecklist).values(item).returning();
     return newItem;
   }
@@ -1164,6 +1204,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createServiceProcedure(procedure: InsertServiceProcedure): Promise<ServiceProcedure> {
+    // Validar campos obligatorios
+    if (!procedure.name) {
+      throw new Error('name es un campo obligatorio');
+    }
+    
     const [newProcedure] = await db
       .insert(serviceProcedures)
       .values(procedure)
@@ -1306,10 +1351,10 @@ export class DatabaseStorage implements IStorage {
     try {
       await db.insert(serviceOrderStatusHistory).values({
         serviceOrderId: history.serviceOrderId,
-        oldStatus: history.previousStatus,
+        previousStatus: history.previousStatus,
         newStatus: history.newStatus,
         comment: history.notes || '',
-        userId: history.changedBy,
+        changedBy: history.changedBy,
         timestamp: new Date()
       });
     } catch (error) {
