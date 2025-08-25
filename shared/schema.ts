@@ -163,7 +163,6 @@ export const inventoryItems = pgTable("inventory_items", {
   location: text("location"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Notifications table - Estructura real de la base de datos
@@ -182,7 +181,6 @@ export const notifications = pgTable("notifications", {
   requiresResponse: boolean("requires_response").default(false),
   responseToId: integer("response_to_id").references(() => notifications.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Invoices table
