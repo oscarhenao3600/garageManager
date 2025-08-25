@@ -367,11 +367,7 @@ export const insertUserActivityLogSchema = createInsertSchema(userActivityLog);
 export const insertChecklistValidationRuleSchema = createInsertSchema(checklistValidationRules);
 
 // Company Setting insert schema
-export const insertCompanySettingSchema = createInsertSchema(companySettings).omit({ 
-  id: true, 
-  createdAt: true,
-  updatedAt: true
-});
+export const insertCompanySettingSchema = createInsertSchema(companySettings);
 
 // Types
 export type User = typeof users.$inferSelect;
