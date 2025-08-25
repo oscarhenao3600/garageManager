@@ -127,7 +127,7 @@ export default function SimpleTallerConfig() {
     }
   };
 
-  const eliminarImagen = async (tipoImagen: string) => {
+  const eliminarImagenLocal = async (tipoImagen: string) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -321,7 +321,7 @@ export default function SimpleTallerConfig() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium capitalize">{tipoImagen}</span>
                     <Button
-                    onClick={() => eliminarImagen(tipoImagen)}
+                    onClick={() => eliminarImagenLocal(tipoImagen)}
                     variant="outline"
                       size="sm"
                     className="text-red-600 hover:text-red-700"
