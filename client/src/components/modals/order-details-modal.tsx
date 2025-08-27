@@ -11,8 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Calendar, Clock, User, Car, FileText, DollarSign, AlertTriangle } from "lucide-react";
+import { Calendar, User, Car, FileText, DollarSign, AlertTriangle } from "lucide-react";
 
 interface OrderDetailsModalProps {
   open: boolean;
@@ -45,6 +44,24 @@ export default function OrderDetailsModal({
       return response.json();
     },
     enabled: open && !!orderId && activeTab === 'history',
+  });
+
+  // Obtener items de la orden
+  const { data: orderItems = [] } = useQuery({
+    queryKey: ['/api/service-orders', orderId, 'items'],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest('GET', `/api/service-orders/${orderId}/items`);
+        if (response.ok) {
+          return response.json();
+        }
+        return [];
+      } catch (error) {
+        console.error('Error fetching order items:', error);
+        return [];
+      }
+    },
+    enabled: open && !!orderId && activeTab === 'procedures',
   });
 
   const getStatusColor = (status: string) => {
@@ -167,7 +184,7 @@ export default function OrderDetailsModal({
             size="sm"
             onClick={() => setActiveTab('procedures')}
           >
-            Procedimientos
+            Items
           </Button>
         </div>
 
@@ -315,6 +332,66 @@ export default function OrderDetailsModal({
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Tiempos */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Información de Tiempos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Tiempo Estimado</p>
+                      <p className="text-sm">
+                        {order.estimatedTime ? 
+                          `${Math.floor(order.estimatedTime / 60)}h ${order.estimatedTime % 60}min` : 
+                          'No especificado'
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Tiempo Real</p>
+                      <p className="text-sm">
+                        {order.actualTime ? 
+                          `${Math.floor(order.actualTime / 60)}h ${order.actualTime % 60}min` : 
+                          'No especificado'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Información de Toma de Orden */}
+              {(order.takenBy || order.takenAt) && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Información de Toma de Orden
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {order.takenBy && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Tomada Por</p>
+                          <p className="text-sm">ID: {order.takenBy}</p>
+                        </div>
+                      )}
+                      {order.takenAt && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Fecha de Toma</p>
+                          <p className="text-sm">{formatDate(order.takenAt)}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
@@ -354,8 +431,47 @@ export default function OrderDetailsModal({
 
           {activeTab === 'procedures' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Procedimientos Realizados</h3>
-              <p className="text-gray-500 text-center py-8">Funcionalidad de procedimientos en desarrollo</p>
+              <h3 className="text-lg font-semibold">Items de la Orden</h3>
+              {orderItems.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No hay items registrados para esta orden</p>
+              ) : (
+                <div className="space-y-3">
+                  {orderItems.map((item: any, index: number) => (
+                    <Card key={index}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <Badge className="bg-blue-100 text-blue-700">
+                              {item.itemType === 'service' ? 'Servicio' : 
+                               item.itemType === 'part' ? 'Repuesto' : 
+                               item.itemType === 'material' ? 'Material' : item.itemType}
+                            </Badge>
+                            <span className="text-sm font-medium text-gray-900">
+                              {item.description}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-gray-900">
+                              ${item.totalPrice}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {item.quantity} x ${item.unitPrice}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
+                          <div>
+                            <span className="font-medium">Orden:</span> {item.orderIndex}
+                          </div>
+                          <div>
+                            <span className="font-medium">Creado:</span> {new Date(item.createdAt).toLocaleDateString('es-CO')}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

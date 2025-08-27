@@ -7,15 +7,12 @@ async function generateHash() {
     
     try {
         const hash = await bcrypt.hash(password, saltRounds);
-        console.log('Contraseña:', password);
-        console.log('Hash generado:', hash);
-        console.log('');
-        console.log('Para usar en SQL:');
-        console.log(`'${hash}'`);
-        console.log('');
-        console.log('Verificación:');
-        const isValid = await bcrypt.compare(password, hash);
-        console.log('Hash válido:', isValid);
+        // Contraseña: ${password}
+// Hash generado: ${hash}
+// Para usar en SQL: '${hash}'
+// Verificación:
+const isValid = await bcrypt.compare(password, hash);
+// Hash válido: ${isValid}
     } catch (error) {
         console.error('Error:', error);
     }

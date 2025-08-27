@@ -1,17 +1,14 @@
 import { useEffect } from 'react';
-import { useTaller } from '@/contexts/TallerContext';
 
-export const useFavicon = () => {
-  const { taller } = useTaller();
-
+export const useFavicon = (faviconUrl?: string) => {
   useEffect(() => {
-    if (taller?.favicon) {
+    if (faviconUrl) {
       // Actualizar favicon
-      const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+      const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
       link.type = 'image/x-icon';
       link.rel = 'shortcut icon';
-      link.href = taller.favicon;
+      link.href = faviconUrl;
       document.getElementsByTagName('head')[0].appendChild(link);
     }
-  }, [taller?.favicon]);
+  }, [faviconUrl]);
 };

@@ -4,24 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  Car, 
   Package, 
-  DollarSign, 
   Calendar,
   Download,
-  Filter,
   RefreshCw,
   AlertTriangle,
-  CheckCircle,
   Loader2
 } from "lucide-react";
 
 interface ReportData {
   sales?: any[];
-  inventory?: any[];
+  inventory?: {
+    totalItems?: number;
+    lowStockItems?: number;
+    outOfStock?: number;
+  };
   expiringDocs?: any[];
   operatorPerformance?: any[];
   topClients?: any[];
@@ -98,8 +95,7 @@ const AdvancedReports = memo(({}: AdvancedReportsProps) => {
           inventory: {
             totalItems: Math.floor(Math.random() * 100 + 50),
             lowStockItems: dashboardData.lowStockItems || 0,
-            outOfStock: Math.floor(Math.random() * 5),
-            categories: ['Repuestos', 'Herramientas', 'Consumibles', 'Equipos']
+            outOfStock: Math.floor(Math.random() * 5)
           },
           expiringDocs: [
             { plate: 'ABC123', type: 'SOAT', daysUntilExpiry: 15, client: 'Juan Pérez' },
@@ -158,16 +154,6 @@ const AdvancedReports = memo(({}: AdvancedReportsProps) => {
   const handleExport = useCallback((type: string) => {
     console.log(`Exportando reporte de ${type}`);
     // Aquí se implementaría la exportación real a PDF/Excel
-  }, []);
-
-  const getStatusColor = useCallback((status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pagadas': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'pendientes': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'vencidas': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'en proceso': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    }
   }, []);
 
   // Si hay error, mostrar mensaje de error
@@ -353,12 +339,13 @@ const AdvancedReports = memo(({}: AdvancedReportsProps) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {reportData.billingStatus?.map((status, index) => (
-              <div key={index} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
-                <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{status.status}</span>
-                <Badge variant="outline" className={getStatusColor(status.status)}>
-                  {status.count}
-                </Badge>
+            {reportData.billingStatus?.map((status: any, index: number) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-3 h-3 rounded-full ${status.status === 'paid' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                  <span className="font-medium">{status.status}</span>
+                </div>
+                <span className="text-sm text-gray-600">{status.count} órdenes</span>
               </div>
             ))}
           </div>

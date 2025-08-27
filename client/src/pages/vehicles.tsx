@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Car, Calendar, AlertTriangle, CheckCircle } from "lucide-react";
+import { Plus, Search, Car, AlertTriangle } from "lucide-react";
 import NewVehicleModal from "@/components/modals/new-vehicle-modal";
 import EditVehicleModal from "@/components/modals/edit-vehicle-modal";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,7 +20,16 @@ export default function Vehicles() {
   const canManageVehicles = !isClient; // Solo admin, operator, etc. pueden gestionar vehículos
 
   const { data: vehicles = [], isLoading } = useQuery({
-    queryKey: ['/api/vehicles', { search: searchQuery }],
+    queryKey: ['/api/vehicles'],
+  });
+
+  // Filtrar vehículos
+  const filteredVehicles = (vehicles as any[]).filter((vehicle: any) => {
+    const matchesPlate = vehicle.plate.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesBrand = vehicle.brand.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesModel = vehicle.model.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesOwner = `${vehicle.client?.firstName} ${vehicle.client?.lastName}`.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesPlate || matchesBrand || matchesModel || matchesOwner;
   });
 
   const getDocumentStatus = (expiryDate: string | null) => {
@@ -98,7 +107,7 @@ export default function Vehicles() {
 
       {/* Vehicles Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
-        {vehicles.length === 0 ? (
+        {filteredVehicles.length === 0 ? (
           <div className="col-span-full">
             <Card>
               <CardContent className="p-12 text-center">
@@ -108,7 +117,7 @@ export default function Vehicles() {
             </Card>
           </div>
         ) : (
-          vehicles.map((vehicle: any) => {
+          filteredVehicles.map((vehicle: any) => {
             const soatStatus = getDocumentStatus(vehicle.soatExpiry);
             const techStatus = getDocumentStatus(vehicle.technicalInspectionExpiry);
             

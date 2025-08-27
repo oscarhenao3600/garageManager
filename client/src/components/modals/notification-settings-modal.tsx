@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -13,7 +12,6 @@ import {
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -27,34 +25,36 @@ import { Bell, AlertTriangle, Package, Car, Calendar, Settings } from "lucide-re
 
 const formSchema = z.object({
   // Notificaciones de documentos
-  soatExpiry: z.boolean().default(true),
-  soatExpiryDays: z.number().min(1).max(90).default(30),
-  technicalInspection: z.boolean().default(true),
-  technicalInspectionDays: z.number().min(1).max(90).default(30),
+  soatExpiry: z.boolean(),
+  soatExpiryDays: z.number().min(1).max(90),
+  technicalInspection: z.boolean(),
+  technicalInspectionDays: z.number().min(1).max(90),
   
   // Notificaciones de inventario
-  lowStock: z.boolean().default(true),
-  lowStockThreshold: z.number().min(1).max(50).default(10),
+  lowStock: z.boolean(),
+  lowStockThreshold: z.number().min(1).max(50),
   
   // Notificaciones de órdenes
-  orderUpdates: z.boolean().default(true),
-  orderStatusChanges: z.boolean().default(true),
+  orderUpdates: z.boolean(),
+  orderStatusChanges: z.boolean(),
   
   // Notificaciones de vehículos
-  vehicleReminders: z.boolean().default(true),
-  maintenanceReminders: z.boolean().default(true),
+  vehicleReminders: z.boolean(),
+  maintenanceReminders: z.boolean(),
   
   // Notificaciones del sistema
-  systemAlerts: z.boolean().default(true),
-  securityAlerts: z.boolean().default(true),
+  systemAlerts: z.boolean(),
+  securityAlerts: z.boolean(),
   
   // Configuración general
-  emailNotifications: z.boolean().default(true),
-  pushNotifications: z.boolean().default(true),
-  quietHours: z.boolean().default(false),
-  quietHoursStart: z.string().default("22:00"),
-  quietHoursEnd: z.string().default("08:00"),
+  emailNotifications: z.boolean(),
+  pushNotifications: z.boolean(),
+  quietHours: z.boolean(),
+  quietHoursStart: z.string(),
+  quietHoursEnd: z.string(),
 });
+
+type FormData = z.infer<typeof formSchema>;
 
 interface NotificationSettingsModalProps {
   open: boolean;
@@ -65,7 +65,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       soatExpiry: true,
@@ -89,7 +89,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
   });
 
   const saveSettingsMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
+    mutationFn: async (data: FormData) => {
       const response = await apiRequest('PUT', '/api/notifications/settings', data);
       return response.json();
     },
@@ -97,20 +97,20 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       toast({
         title: "Configuración guardada",
-        description: "Las preferencias de notificaciones han sido actualizadas.",
+        description: "Las preferencias de notificación han sido actualizadas.",
       });
       onOpenChange(false);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "No se pudieron guardar las preferencias.",
+        description: error.message || "No se pudieron guardar las configuraciones.",
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  const onSubmit = (data: FormData) => {
     saveSettingsMutation.mutate(data);
   };
 
@@ -137,7 +137,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+                <Controller
                   control={form.control}
                   name="soatExpiry"
                   render={({ field }) => (
@@ -158,7 +158,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
                   )}
                 />
 
-                <FormField
+                <Controller
                   control={form.control}
                   name="technicalInspection"
                   render={({ field }) => (
@@ -181,7 +181,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+                <Controller
                   control={form.control}
                   name="soatExpiryDays"
                   render={({ field }) => (
@@ -206,7 +206,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
                   )}
                 />
 
-                <FormField
+                <Controller
                   control={form.control}
                   name="technicalInspectionDays"
                   render={({ field }) => (
@@ -241,7 +241,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+                <Controller
                   control={form.control}
                   name="lowStock"
                   render={({ field }) => (
@@ -262,7 +262,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
                   )}
                 />
 
-                <FormField
+                <Controller
                   control={form.control}
                   name="lowStockThreshold"
                   render={({ field }) => (
@@ -297,7 +297,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+                <Controller
                   control={form.control}
                   name="orderUpdates"
                   render={({ field }) => (
@@ -318,7 +318,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
                   )}
                 />
 
-                <FormField
+                <Controller
                   control={form.control}
                   name="orderStatusChanges"
                   render={({ field }) => (
@@ -349,7 +349,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+                <Controller
                   control={form.control}
                   name="vehicleReminders"
                   render={({ field }) => (
@@ -370,7 +370,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
                   )}
                 />
 
-                <FormField
+                <Controller
                   control={form.control}
                   name="maintenanceReminders"
                   render={({ field }) => (
@@ -401,7 +401,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+                <Controller
                   control={form.control}
                   name="systemAlerts"
                   render={({ field }) => (
@@ -422,7 +422,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
                   )}
                 />
 
-                <FormField
+                <Controller
                   control={form.control}
                   name="securityAlerts"
                   render={({ field }) => (
@@ -450,7 +450,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
               <h3 className="text-lg font-semibold">Configuración General</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+                <Controller
                   control={form.control}
                   name="emailNotifications"
                   render={({ field }) => (
@@ -471,7 +471,7 @@ export default function NotificationSettingsModal({ open, onOpenChange }: Notifi
                   )}
                 />
 
-                <FormField
+                <Controller
                   control={form.control}
                   name="pushNotifications"
                   render={({ field }) => (

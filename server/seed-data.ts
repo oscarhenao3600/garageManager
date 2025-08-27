@@ -4,7 +4,6 @@ import { eq, and } from "drizzle-orm";
 
 export async function seedInitialData() {
   try {
-    console.log("🌱 Iniciando población de datos iniciales...");
 
     // Crear tipos de vehículo básicos
     const vehicleTypesData = [
@@ -35,7 +34,6 @@ export async function seedInitialData() {
       }
     ];
 
-    console.log("🚗 Creando tipos de vehículo...");
     for (const vehicleType of vehicleTypesData) {
       const [existing] = await db
         .select()
@@ -44,9 +42,6 @@ export async function seedInitialData() {
       
       if (!existing) {
         await db.insert(vehicleTypes).values(vehicleType);
-        console.log(`✅ Tipo de vehículo creado: ${vehicleType.name}`);
-      } else {
-        console.log(`ℹ️ Tipo de vehículo ya existe: ${vehicleType.name}`);
       }
     }
 
@@ -266,7 +261,6 @@ export async function seedInitialData() {
       }
     ];
 
-    console.log("📋 Creando items de checklist...");
     for (const item of checklistData) {
       if (item.vehicleTypeId) {
         const [existing] = await db
@@ -281,14 +275,9 @@ export async function seedInitialData() {
         
         if (!existing) {
           await db.insert(checklistItems).values(item);
-          console.log(`✅ Item de checklist creado: ${item.name} para ${item.vehicleTypeId}`);
-        } else {
-          console.log(`ℹ️ Item de checklist ya existe: ${item.name} para ${item.vehicleTypeId}`);
         }
       }
     }
-
-    console.log("🎉 Datos iniciales poblados exitosamente!");
   } catch (error) {
     console.error("❌ Error poblando datos iniciales:", error);
     throw error;

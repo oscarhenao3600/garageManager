@@ -72,34 +72,34 @@ export default function Sidebar() {
   // Función para cargar datos del taller
   const cargarDatosTaller = async () => {
     try {
-      console.log('🔄 Cargando datos del taller en Sidebar...');
+      console.log('Cargando datos del taller en Sidebar...');
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('❌ No hay token en Sidebar');
+        console.log('No hay token en Sidebar');
         return;
       }
 
       // Cargar datos de la empresa
-      const companyResponse = await fetch('/api/company-settings', {
+      const companyResponse = await fetch('/api/company-info', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      console.log('📡 Respuesta de company-settings en Sidebar:', companyResponse.status);
+      console.log('Respuesta de company-settings en Sidebar:', companyResponse.status);
 
       if (companyResponse.ok) {
         const companyData = await companyResponse.json();
-        console.log('📊 Datos de empresa recibidos en Sidebar:', companyData);
+        console.log('Datos de empresa recibidos en Sidebar:', companyData);
         
         if (companyData.name) {
           setTallerNombre(companyData.name);
-          console.log('✅ Nombre del taller actualizado:', companyData.name);
+          console.log('Nombre del taller actualizado:', companyData.name);
         }
         if (companyData.address) {
           setTallerDescripcion(companyData.address);
-          console.log('✅ Dirección del taller actualizada:', companyData.address);
+          console.log('Dirección del taller actualizada:', companyData.address);
         }
       }
 
@@ -115,18 +115,18 @@ export default function Sidebar() {
 
       if (imagesResponse.ok) {
         const imagesData = await imagesResponse.json();
-        console.log('🖼️ Datos de imágenes recibidos en Sidebar:', imagesData);
+        console.log('Datos de imágenes recibidos en Sidebar:', imagesData);
         
         if (imagesData.imagenes && imagesData.imagenes.logo) {
-          console.log('🖼️ Logo encontrado en imágenes (no se usa)');
+          console.log('Logo encontrado en imágenes (no se usa)');
         } else {
-          console.log('❌ No hay logo en las imágenes del taller');
+          console.log('No hay logo en las imágenes del taller');
         }
       } else {
-        console.log('❌ Error cargando imágenes:', imagesResponse.status);
+        console.log('Error cargando imágenes:', imagesResponse.status);
       }
     } catch (error) {
-      console.log('❌ Error cargando datos del taller en Sidebar:', error);
+      console.log('Error cargando datos del taller en Sidebar:', error);
     }
   };
 

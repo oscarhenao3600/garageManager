@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { type Invoice } from '@shared/schema';
+import { type Invoice } from '../../shared/schema';
 import { dbStorage } from '../storage';
 import { generateInvoicePDF } from './pdfGenerator';
 
@@ -37,7 +37,7 @@ export async function sendInvoiceEmail(invoice: Invoice, recipientEmail: string)
   const pdfPath = await generateInvoicePDF(invoice);
 
   // Obtener información del cliente
-  const client = await dbStorage.getClientByServiceOrder(invoice.serviceOrderId);
+  const client = await dbStorage.getUserById(invoice.clientId);
   if (!client) {
     throw new Error('Cliente no encontrado');
   }
@@ -46,16 +46,16 @@ export async function sendInvoiceEmail(invoice: Invoice, recipientEmail: string)
   await transporter.sendMail({
     from: `"${companySettings.name}" <${settings.email.auth.user}>`,
     to: recipientEmail,
-    subject: `Factura ${invoice.invoiceNumber} - ${companySettings.name}`,
+    subject: `Factura ${invoice.id} - ${companySettings.name}`,
     html: `
-      <h2>Factura ${invoice.invoiceNumber}</h2>
+      <h2>Factura ${invoice.id}</h2>
       <p>Estimado/a ${client.firstName} ${client.lastName},</p>
       <p>Adjunto encontrará la factura correspondiente a los servicios prestados.</p>
       <p><strong>Detalles de la factura:</strong></p>
       <ul>
-        <li>Número: ${invoice.invoiceNumber}</li>
+        <li>Número: ${invoice.id}</li>
         <li>Fecha: ${invoice.createdAt.toLocaleDateString('es-CO')}</li>
-        <li>Vencimiento: ${invoice.dueDate.toLocaleDateString('es-CO')}</li>
+        <li>Vencimiento: ${invoice.dueDate ? invoice.dueDate.toLocaleDateString('es-CO') : 'No definido'}</li>
         <li>Total: ${formatCurrency(Number(invoice.total))}</li>
       </ul>
       ${companySettings.bankInfo ? `
@@ -79,7 +79,7 @@ export async function sendInvoiceEmail(invoice: Invoice, recipientEmail: string)
     `,
     attachments: [
       {
-        filename: `factura-${invoice.invoiceNumber}.pdf`,
+        filename: `factura-${invoice.id}.pdf`,
         path: pdfPath
       }
     ]

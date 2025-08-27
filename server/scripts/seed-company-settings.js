@@ -15,17 +15,17 @@ async function seedCompanySettings() {
   const db = drizzle(client);
 
   try {
-    console.log('Verificando si existen configuraciones de empresa...');
+    // Verificando si existen configuraciones de empresa...
     
     // Verificar si ya existen configuraciones
     const existingSettings = await db.select().from(companySettings).limit(1);
     
     if (existingSettings.length > 0) {
-      console.log('Ya existen configuraciones de empresa:', existingSettings[0]);
+      // Ya existen configuraciones de empresa
       return;
     }
 
-    console.log('Insertando configuración inicial de la empresa...');
+    // Insertando configuración inicial de la empresa...
     
     // Insertar configuración inicial
     const [newSettings] = await db.insert(companySettings).values({
@@ -49,7 +49,7 @@ async function seedCompanySettings() {
       })
     }).returning();
 
-    console.log('Configuración inicial insertada:', newSettings);
+    // Configuración inicial insertada
     
   } catch (error) {
     console.error('Error insertando configuración inicial:', error);

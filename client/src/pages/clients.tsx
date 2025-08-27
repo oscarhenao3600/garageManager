@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, User, Phone, Mail, MapPin, Users } from "lucide-react";
+import { Plus, Search, User, Phone, Mail, MapPin } from "lucide-react";
 import NewClientModal from "@/components/modals/new-client-modal";
 import EditClientModal from "@/components/modals/edit-client-modal";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,7 +29,7 @@ export default function Clients() {
   });
 
   // Filtrar clientes localmente
-  const filteredClients = clients.filter((client: any) => {
+  const filteredClients = (clients as any[]).filter((client: any) => {
     const matchesSearch = !searchQuery || 
       client.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -45,7 +45,7 @@ export default function Clients() {
   });
 
   // Obtener ciudades únicas para el filtro
-  const uniqueCities = [...new Set(clients.map((client: any) => client.city).filter(Boolean))];
+  const uniqueCities = [...new Set((clients as any[]).map((client: any) => client.city).filter(Boolean))];
 
   // Aplicar estilos personalizados del scrollbar
   useEffect(() => {
@@ -176,7 +176,7 @@ export default function Clients() {
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <span>📊 Mostrando</span>
                 <Badge variant="outline" className="font-mono">
-                  {filteredClients.length} de {clients.length}
+                  {filteredClients.length} de {(clients as any[]).length}
                 </Badge>
                 <span>clientes</span>
               </div>
@@ -206,7 +206,7 @@ export default function Clients() {
                   <Card>
                     <CardContent className="p-12 text-center">
                       <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      {clients.length === 0 ? (
+                      {(clients as any[]).length === 0 ? (
                         <>
                           <p className="text-gray-500 text-lg mb-2">No hay clientes registrados</p>
                           <p className="text-gray-400 text-sm mb-4">Comienza agregando tu primer cliente al sistema</p>

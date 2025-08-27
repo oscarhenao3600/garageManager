@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -63,12 +62,12 @@ export default function AssignOperatorModal({
 
   // Obtener lista de operarios
   const { data: workers = [], isLoading: workersLoading, error: workersError } = useQuery({
-    queryKey: ['/api/workers'],
+    queryKey: ['/api/operators'],
     queryFn: async () => {
       console.log('Obteniendo operarios...');
       console.log('Token:', localStorage.getItem('token'));
       try {
-        const response = await apiRequest('GET', '/api/workers');
+        const response = await apiRequest('GET', '/api/operators');
         const data = await response.json();
         console.log('Operarios obtenidos:', data);
         return data;
@@ -76,9 +75,6 @@ export default function AssignOperatorModal({
         console.error('Error en la petición:', error);
         throw error;
       }
-    },
-    onError: (error) => {
-      console.error('Error al obtener operarios:', error);
     },
     retry: 1,
     refetchOnWindowFocus: false

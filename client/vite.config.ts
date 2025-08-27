@@ -13,6 +13,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       '@shared': path.resolve(__dirname, '../shared'),
     },
+    extensions: ['.js', '.ts', '.jsx', '.tsx'],
   },
   server: {
     port: 5173,
@@ -20,10 +21,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-      },
-      '/uploads': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
+        secure: false,
       },
     },
   },

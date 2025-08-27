@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -12,7 +12,6 @@ import {
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -107,50 +106,50 @@ export default function EditClientModal({ open, onOpenChange, client }: EditClie
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Nombres */}
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nombres</FormLabel>
-                  <FormControl>
-                    <Input {...field} value={field.value ?? ''} placeholder="Nombres" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Apellidos */}
-            <FormField
-              control={form.control}
-              name="lastName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Apellidos</FormLabel>
-                  <FormControl>
-                    <Input {...field} value={field.value ?? ''} placeholder="Apellidos" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Documento */}
-            <FormField
-              control={form.control}
-              name="documentNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Documento</FormLabel>
-                  <FormControl>
-                    <Input {...field} value={field.value ?? ''} placeholder="Documento" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Email y Teléfono */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} placeholder="Nombre" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Controller
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Apellido</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} placeholder="Apellido" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            {/* Documento, Email */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Controller
+                control={form.control}
+                name="documentNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número de Documento</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} placeholder="Número de documento" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Controller
                 control={form.control}
                 name="email"
                 render={({ field }) => (
@@ -163,22 +162,23 @@ export default function EditClientModal({ open, onOpenChange, client }: EditClie
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Teléfono</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ''} placeholder="Teléfono" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+            {/* Teléfono */}
+            <Controller
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Teléfono</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value ?? ''} placeholder="Teléfono" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             {/* Dirección, Ciudad, Departamento */}
-            <FormField
+            <Controller
               control={form.control}
               name="address"
               render={({ field }) => (
@@ -192,7 +192,7 @@ export default function EditClientModal({ open, onOpenChange, client }: EditClie
               )}
             />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="city"
                 render={({ field }) => (
@@ -205,7 +205,7 @@ export default function EditClientModal({ open, onOpenChange, client }: EditClie
                   </FormItem>
                 )}
               />
-              <FormField
+              <Controller
                 control={form.control}
                 name="department"
                 render={({ field }) => (
@@ -220,16 +220,16 @@ export default function EditClientModal({ open, onOpenChange, client }: EditClie
               />
             </div>
             {/* Estado */}
-            <FormField
+            <Controller
               control={form.control}
               name="isActive"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Estado:  </FormLabel>
                   <FormControl>
-                    <select {...field} className="input">
-                      <option value={true}>Activo</option>
-                      <option value={false}>Inactivo</option>
+                    <select {...field} className="input" value={field.value ? "true" : "false"} onChange={(e) => field.onChange(e.target.value === "true")}>
+                      <option value="true">Activo</option>
+                      <option value="false">Inactivo</option>
                     </select>
                   </FormControl>
                   <FormMessage />

@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, HardHat, Phone, Mail, CheckCircle, Clock, AlertCircle, Users, TrendingUp, Award } from "lucide-react";
+import { Plus, Search, HardHat, Phone, Mail, CheckCircle, Clock, AlertCircle, Users, TrendingUp, Award, UserPlus } from "lucide-react";
 import NewWorkerModal from "@/components/modals/new-worker-modal";
+import NewUserModal from "@/components/modals/new-user-modal";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function Workers() {
@@ -14,23 +15,55 @@ export default function Workers() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showNewWorkerModal, setShowNewWorkerModal] = useState(false);
+  const [showNewUserModal, setShowNewUserModal] = useState(false);
   const { user } = useAuth();
 
   // Verificar permisos
   const isClient = user?.role === 'user';
   const canManageWorkers = !isClient; // Solo admin, operator, etc. pueden gestionar trabajadores
 
-  const { data: workers = [], isLoading } = useQuery({
+  const { data: workers = [], isLoading: workersLoading } = useQuery({
     queryKey: ['/api/workers'],
   });
 
-  const { data: orders = [] } = useQuery({
+  const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ['/api/service-orders'],
+  });
+
+  // Calcular estadísticas
+  const stats = useMemo(() => {
+    const workersArray = workers as any[];
+    const ordersArray = orders as any[];
+    
+    return {
+      totalWorkers: workersArray.length,
+      activeWorkers: workersArray.filter((w: any) => w.isActive).length,
+      operators: workersArray.filter((w: any) => w.role === 'operator').length,
+      admins: workersArray.filter((w: any) => w.role === 'admin').length,
+      totalOrders: ordersArray.length,
+      activeOrders: ordersArray.filter((o: any) => o.status === 'in_progress' || o.status === 'pending').length,
+      completedOrders: ordersArray.filter((o: any) => o.status === 'completed').length,
+    };
+  }, [workers, orders]);
+
+  // Filtrar trabajadores
+  const filteredWorkers = (workers as any[]).filter((worker: any) => {
+    const matchesSearch = !searchQuery || 
+      `${worker.firstName} ${worker.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      worker.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      worker.email.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRole = roleFilter === 'all' || worker.role === roleFilter;
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'active' && worker.isActive) ||
+      (statusFilter === 'inactive' && !worker.isActive);
+    
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   // Calculate worker statistics
   const getWorkerStats = (workerId: number) => {
-    const workerOrders = orders.filter((order: any) => order.operatorId === workerId);
+    const workerOrders = (orders as any[]).filter((order: any) => order.operatorId === workerId);
     const activeOrders = workerOrders.filter((order: any) => 
       order.status === 'in_progress' || order.status === 'pending'
     );
@@ -59,32 +92,7 @@ export default function Workers() {
     }
   };
 
-  // Estadísticas generales del equipo
-  const teamStats = {
-    totalWorkers: workers.length,
-    activeWorkers: workers.filter((w: any) => w.isActive).length,
-    operators: workers.filter((w: any) => w.role === 'operator').length,
-    admins: workers.filter((w: any) => w.role === 'admin').length,
-    totalOrders: orders.length,
-    activeOrders: orders.filter((o: any) => o.status === 'in_progress' || o.status === 'pending').length,
-    completedOrders: orders.filter((o: any) => o.status === 'completed').length,
-  };
-
-  const filteredWorkers = workers.filter((worker: any) => {
-    const matchesSearch = !searchQuery || 
-      `${worker.firstName} ${worker.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      worker.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      worker.email.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRole = roleFilter === 'all' || worker.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && worker.isActive) ||
-      (statusFilter === 'inactive' && !worker.isActive);
-    
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
-  if (isLoading) {
+  if (workersLoading || ordersLoading) {
     return (
       <div className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -104,7 +112,7 @@ export default function Workers() {
     );
   }
 
-  if (!workers || workers.length === 0) {
+  if (!workers || (workers as any[]).length === 0) {
     return (
       <div className="p-6 space-y-6">
         {/* Header */}
@@ -162,26 +170,31 @@ export default function Workers() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {isClient ? 'Equipo del Taller' : 'Operarios'}
-          </h1>
-          <p className="text-gray-600">
-            {isClient 
-              ? 'Consulta información del equipo de trabajo' 
-              : 'Gestiona el equipo de trabajo del taller'
-            }
+          <h1 className="text-3xl font-bold text-gray-900">Gestión de Operarios</h1>
+          <p className="text-gray-600 mt-2">
+            Administra el personal del taller y sus asignaciones
           </p>
         </div>
+        
         {canManageWorkers && (
-          <Button 
-            onClick={() => setShowNewWorkerModal(true)} 
-            className="bg-orange-600 hover:bg-orange-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Operario
-          </Button>
+          <div className="flex space-x-3">
+            <Button
+              onClick={() => setShowNewUserModal(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Nuevo Usuario
+            </Button>
+            <Button
+              onClick={() => setShowNewWorkerModal(true)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Operario
+            </Button>
+          </div>
         )}
       </div>
 
@@ -192,7 +205,7 @@ export default function Workers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Operarios</p>
-                <p className="text-2xl font-bold text-orange-600">{teamStats.totalWorkers}</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.totalWorkers}</p>
               </div>
               <Users className="h-8 w-8 text-orange-600" />
             </div>
@@ -204,7 +217,7 @@ export default function Workers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Activos</p>
-                <p className="text-2xl font-bold text-green-600">{teamStats.activeWorkers}</p>
+                <p className="text-2xl font-bold text-green-600">{stats.activeWorkers}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
@@ -216,7 +229,7 @@ export default function Workers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Órdenes Activas</p>
-                <p className="text-2xl font-bold text-blue-600">{teamStats.activeOrders}</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.activeOrders}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-blue-600" />
             </div>
@@ -228,7 +241,7 @@ export default function Workers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Completadas</p>
-                <p className="text-2xl font-bold text-purple-600">{teamStats.completedOrders}</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.completedOrders}</p>
               </div>
               <Award className="h-8 w-8 text-purple-600" />
             </div>
@@ -287,7 +300,7 @@ export default function Workers() {
               <CardContent className="p-12 text-center">
                 <HardHat className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {workers.length === 0 ? "No se encontraron operarios" : "No hay operarios que coincidan con los filtros"}
+                  {(workers as any[]).length === 0 ? "No se encontraron operarios" : "No hay operarios que coincidan con los filtros"}
                 </p>
               </CardContent>
             </Card>
@@ -430,6 +443,10 @@ export default function Workers() {
       <NewWorkerModal 
         open={showNewWorkerModal} 
         onOpenChange={setShowNewWorkerModal} 
+      />
+      <NewUserModal 
+        open={showNewUserModal} 
+        onOpenChange={setShowNewUserModal} 
       />
     </div>
   );

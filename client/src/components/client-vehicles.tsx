@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Car, Calendar, MapPin, Gauge, FileText, AlertTriangle, CheckCircle } from "lucide-react";
 
 interface ClientVehiclesProps {
@@ -97,8 +96,8 @@ export default function ClientVehicles({ clientId }: ClientVehiclesProps) {
         <h3 className="text-lg font-semibold text-gray-900">
           Total de Vehículos: {vehicles.length}
         </h3>
-        <Badge variant={vehicles.some(v => v.isActive) ? "default" : "secondary"}>
-          {vehicles.filter(v => v.isActive).length} Activos
+        <Badge variant={vehicles.some((v: Vehicle) => v.isActive) ? "default" : "secondary"}>
+          {vehicles.filter((v: Vehicle) => v.isActive).length} Activos
         </Badge>
       </div>
 

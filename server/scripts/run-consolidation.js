@@ -12,75 +12,68 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-console.log('🚀 Iniciando consolidación inteligente de tablas users y clients...\n');
+// Iniciando consolidación inteligente de tablas users y clients...
 
 // Leer los scripts SQL
 const preCheckScript = fs.readFileSync(join(__dirname, 'pre-consolidation-check.sql'), 'utf8');
 const consolidationScript = fs.readFileSync(join(__dirname, 'consolidate-users-clients.sql'), 'utf8');
 
-console.log('📋 Scripts SQL cargados correctamente');
-console.log('1. pre-consolidation-check.sql - Verificación previa');
-console.log('2. consolidate-users-clients.sql - Consolidación principal\n');
-
-console.log('⚠️  IMPORTANTE - PASOS A SEGUIR:');
-console.log('─'.repeat(60));
-console.log('1. HAZ BACKUP COMPLETO de tu base de datos');
-console.log('2. Ejecuta en entorno de desarrollo PRIMERO');
-console.log('3. Verifica que no hay usuarios activos en el sistema');
-console.log('4. Ten plan de rollback preparado');
-console.log('─'.repeat(60));
-
-console.log('\n📝 PASOS DE EJECUCIÓN:');
-console.log('─'.repeat(40));
-
-console.log('\n🔍 PASO 1: Verificación previa');
-console.log('Ejecuta este script en PostgreSQL:');
-console.log('\\i server/scripts/pre-consolidation-check.sql');
-console.log('Este script te mostrará:');
-console.log('• Estructura actual de ambas tablas');
-console.log('• Conteo de registros');
-console.log('• Clientes duplicados');
-console.log('• Conflictos potenciales');
-console.log('• Estado de vehículos');
-
-console.log('\n⚡ PASO 2: Consolidación principal');
-console.log('Después de revisar la verificación, ejecuta:');
-console.log('\\i server/scripts/consolidate-users-clients.sql');
-console.log('Este script:');
-console.log('• Agregará campos faltantes a users');
-console.log('• Consolidará clientes duplicados');
-console.log('• Insertará clientes únicos');
-console.log('• Actualizará referencias de vehículos');
-console.log('• Verificará integridad de datos');
-
-console.log('\n✅ PASO 3: Verificación post-consolidación');
-console.log('El script mostrará:');
-console.log('• Resumen de consolidación por roles');
-console.log('• Estadísticas de vehículos');
-console.log('• Clientes con vehículos');
-console.log('• Verificación de integridad');
-
-console.log('\n🔧 PASO 4: Limpieza final (OPCIONAL)');
-console.log('Solo después de verificar que todo funciona:');
-console.log('1. ALTER TABLE vehicles ALTER COLUMN user_id SET NOT NULL;');
-console.log('2. ALTER TABLE vehicles DROP COLUMN clientId;');
-console.log('3. ALTER TABLE vehicles RENAME COLUMN user_id TO clientId;');
-console.log('4. DROP TABLE clients; (opcional)');
-
-console.log('\n📊 CONTENIDO DEL SCRIPT DE VERIFICACIÓN PREVIA:');
-console.log('─'.repeat(50));
-console.log(preCheckScript);
-console.log('─'.repeat(50));
-
-console.log('\n🔄 CONTENIDO DEL SCRIPT DE CONSOLIDACIÓN:');
-console.log('─'.repeat(50));
-console.log(consolidationScript);
-console.log('─'.repeat(50));
-
-console.log('\n🎯 BENEFICIOS DE LA CONSOLIDACIÓN:');
-console.log('✅ Login unificado - No más conflictos de autenticación');
-console.log('✅ Datos consistentes - Información sincronizada');
-console.log('✅ Mantenimiento fácil - Una sola tabla para gestionar');
+  // Scripts SQL cargados correctamente
+  // 1. pre-consolidation-check.sql - Verificación previa
+  // 2. consolidate-users-clients.sql - Consolidación principal
+  
+  // IMPORTANTE - PASOS A SEGUIR:
+  // 1. HAZ BACKUP COMPLETO de tu base de datos
+  // 2. Ejecuta en entorno de desarrollo PRIMERO
+  // 3. Verifica que no hay usuarios activos en el sistema
+  // 4. Ten plan de rollback preparado
+  
+  // PASOS DE EJECUCIÓN:
+  
+  // PASO 1: Verificación previa
+  // Ejecuta este script en PostgreSQL:
+  // \i server/scripts/pre-consolidation-check.sql
+  // Este script te mostrará:
+  // • Estructura actual de ambas tablas
+  // • Conteo de registros
+  // • Clientes duplicados
+  // • Conflictos potenciales
+  // • Estado de vehículos
+  
+  // PASO 2: Consolidación principal
+  // Después de revisar la verificación, ejecuta:
+  // \i server/scripts/consolidate-users-clients.sql
+  // Este script:
+  // • Agregará campos faltantes a users
+  // • Consolidará clientes duplicados
+  // • Insertará clientes únicos
+  // • Actualizará referencias de vehículos
+  // • Verificará integridad de datos
+  
+  // PASO 3: Verificación post-consolidación
+  // El script mostrará:
+  // • Resumen de consolidación por roles
+  // • Estadísticas de vehículos
+  // • Clientes con vehículos
+  // • Verificación de integridad
+  
+  // PASO 4: Limpieza final (OPCIONAL)
+  // Solo después de verificar que todo funciona:
+  // 1. ALTER TABLE vehicles ALTER COLUMN user_id SET NOT NULL;
+  // 2. ALTER TABLE vehicles DROP COLUMN clientId;
+  // 3. ALTER TABLE vehicles RENAME COLUMN user_id TO clientId;
+  // 4. DROP TABLE clients; (opcional)
+  
+  // CONTENIDO DEL SCRIPT DE VERIFICACIÓN PREVIA:
+  // ${preCheckScript}
+  
+  // CONTENIDO DEL SCRIPT DE CONSOLIDACIÓN:
+  // ${consolidationScript}
+  
+  // BENEFICIOS DE LA CONSOLIDACIÓN:
+  // ✅ Login unificado - No más conflictos de autenticación
+  // ✅ Datos consistentes - Información sincronizada
+  // ✅ Mantenimiento fácil - Una sola tabla para gestionar
 console.log('✅ Performance mejorada - Menos JOINs complejos');
 console.log('✅ Integridad de datos - Referencias consistentes');
 

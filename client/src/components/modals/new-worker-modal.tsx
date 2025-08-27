@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -13,7 +13,6 @@ import {
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -37,16 +36,16 @@ const formSchema = z.object({
   username: z.string().min(3, "Usuario debe tener al menos 3 caracteres"),
   email: z.string().email("Email inválido"),
   phone: z.string().optional(),
-  role: z.enum(["admin", "operator"], {
-    required_error: "Rol requerido",
-  }),
+  role: z.enum(["admin", "operator"]),
   password: z.string().min(6, "Contraseña debe tener al menos 6 caracteres"),
   confirmPassword: z.string(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden",
   path: ["confirmPassword"],
 });
+
+type FormData = z.infer<typeof formSchema>;
 
 interface NewWorkerModalProps {
   open: boolean;
@@ -58,7 +57,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: "",
@@ -74,36 +73,36 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
   });
 
   const createWorkerMutation = useMutation({
-  mutationFn: async (data: z.infer<typeof formSchema>) => {
-    const { confirmPassword, ...workerData } = data;
-    const response = await apiRequest('POST', '/api/workers', workerData);
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "No se pudo crear el operario");
-    }
-    
-    return response.json();
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['workers'] });
-    toast({
-      title: "Operario creado",
-      description: "El operario ha sido registrado exitosamente.",
-    });
-    onOpenChange(false);
-    form.reset();
-  },
-  onError: (error: Error) => {
-    toast({
-      title: "Error",
-      description: error.message || "No se pudo crear el operario.",
-      variant: "destructive",
-    });
-  },
-});
+    mutationFn: async (data: FormData) => {
+      const { confirmPassword, ...workerData } = data;
+      const response = await apiRequest('POST', '/api/workers', workerData);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "No se pudo crear el operario");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workers'] });
+      toast({
+        title: "Operario creado",
+        description: "El operario ha sido registrado exitosamente.",
+      });
+      onOpenChange(false);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el operario.",
+        variant: "destructive",
+      });
+    },
+  });
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  const onSubmit = (data: FormData) => {
     createWorkerMutation.mutate(data);
   };
 
@@ -120,7 +119,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="firstName"
                 render={({ field }) => (
@@ -134,7 +133,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
                 )}
               />
 
-              <FormField
+              <Controller
                 control={form.control}
                 name="lastName"
                 render={({ field }) => (
@@ -150,7 +149,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="username"
                 render={({ field }) => (
@@ -164,7 +163,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
                 )}
               />
 
-              <FormField
+              <Controller
                 control={form.control}
                 name="email"
                 render={({ field }) => (
@@ -179,7 +178,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
               />
             </div>
 
-            <FormField
+            <Controller
               control={form.control}
               name="phone"
               render={({ field }) => (
@@ -194,7 +193,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="role"
                 render={({ field }) => (
@@ -216,7 +215,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
                 )}
               />
 
-              <FormField
+              <Controller
                 control={form.control}
                 name="isActive"
                 render={({ field }) => (
@@ -239,7 +238,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+              <Controller
                 control={form.control}
                 name="password"
                 render={({ field }) => (
@@ -257,7 +256,7 @@ export default function NewWorkerModal({ open, onOpenChange }: NewWorkerModalPro
                 )}
               />
 
-              <FormField
+              <Controller
                 control={form.control}
                 name="confirmPassword"
                 render={({ field }) => (
