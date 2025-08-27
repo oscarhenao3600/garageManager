@@ -19,6 +19,7 @@ import SimpleTallerConfig from "./SimpleTallerConfig";
 interface DashboardStats {
   activeOrders: number;
   totalClients: number;
+  activeClients: number;
   totalVehicles: number;
   lowStockItems: number;
   totalRevenue: number;
@@ -47,11 +48,20 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     activeOrders: 0,
     totalClients: 0,
+    activeClients: 0,
     totalVehicles: 0,
     lowStockItems: 0,
     totalRevenue: 0,
     pendingInvoices: 0
   });
+
+  // Log del estado inicial
+  console.log('🔍 AdminDashboard: Initial stats state:', stats);
+  
+  // Log cuando el estado cambia
+  useEffect(() => {
+    console.log('🔍 AdminDashboard: Stats state changed:', stats);
+  }, [stats]);
   const [chartData, setChartData] = useState<ChartData>({
     sales: [0, 0, 0],
     orders: [0, 0, 0],
@@ -71,18 +81,23 @@ export default function AdminDashboard() {
   }
 
   // Memoizar datos calculados para evitar recálculos innecesarios
-  const calculatedStats = useMemo(() => ({
-    totalRevenueFormatted: stats.totalRevenue.toLocaleString(),
-    expenses: Math.floor(stats.totalRevenue * 0.3),
-    netProfit: Math.floor(stats.totalRevenue * 0.7),
-    expensesFormatted: Math.floor(stats.totalRevenue * 0.3).toLocaleString(),
-    netProfitFormatted: Math.floor(stats.totalRevenue * 0.7).toLocaleString(),
-    activeClients: Math.floor(stats.totalClients * 0.8),
-    totalItems: Math.floor(Math.random() * 100 + 50),
-    randomInvoices: Math.max(0, stats.totalRevenue > 0 ? Math.floor(Math.random() * 50 + 20) : 0),
-    randomVencidas: Math.max(0, Math.floor(Math.random() * 5)),
-    percentageChange: Math.floor(Math.random() * 20 + 5)
-  }), [stats.totalRevenue, stats.totalClients]);
+  const calculatedStats = useMemo(() => {
+    console.log('🔍 AdminDashboard: Calculating stats with activeClients:', stats.activeClients);
+    const result = {
+      totalRevenueFormatted: stats.totalRevenue.toLocaleString(),
+      expenses: Math.floor(stats.totalRevenue * 0.3),
+      netProfit: Math.floor(stats.totalRevenue * 0.7),
+      expensesFormatted: Math.floor(stats.totalRevenue * 0.3).toLocaleString(),
+      netProfitFormatted: Math.floor(stats.totalRevenue * 0.7).toLocaleString(),
+      activeClients: stats.activeClients,
+      totalItems: Math.floor(Math.random() * 100 + 50),
+      randomInvoices: Math.max(0, stats.totalRevenue > 0 ? Math.floor(Math.random() * 50 + 20) : 0),
+      randomVencidas: Math.max(0, Math.floor(Math.random() * 5)),
+      percentageChange: Math.floor(Math.random() * 20 + 5)
+    };
+    console.log('🔍 AdminDashboard: Calculated stats result:', result);
+    return result;
+  }, [stats.totalRevenue, stats.totalClients, stats.activeClients]);
 
   // Función para cargar estadísticas del dashboard (memoizada)
   const loadDashboardStats = useCallback(async () => {
@@ -90,6 +105,7 @@ export default function AdminDashboard() {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem('token');
+      // console.log('🔍 AdminDashboard: Token from localStorage:', token ? 'Token exists' : 'No token');
       
       if (!token) {
         setError('No hay token de autenticación');
@@ -105,36 +121,41 @@ export default function AdminDashboard() {
       const dashboardResponse = await fetch('/api/dashboard/stats', { headers });
       if (dashboardResponse.ok) {
         const dashboardData = await dashboardResponse.json();
+        console.log('🔍 AdminDashboard: Dashboard data received:', dashboardData);
         
-        setStats(prev => ({
-          ...prev,
-          activeOrders: dashboardData.activeOrders || 0,
-          totalClients: dashboardData.totalClients || 0,
-          totalVehicles: dashboardData.vehiclesInShop || 0,
-          lowStockItems: dashboardData.lowStockItems || 0,
-          totalRevenue: dashboardData.totalRevenue || 0,
-          pendingInvoices: dashboardData.pendingInvoices || 0
-        }));
+        setStats(prev => {
+          const newStats = {
+            ...prev,
+            activeOrders: dashboardData.activeOrders || 0,
+            totalClients: dashboardData.totalClients || 0,
+            totalVehicles: dashboardData.vehiclesInShop || 0,
+            lowStockItems: dashboardData.lowStockItems || 0,
+            totalRevenue: dashboardData.totalRevenue || 0,
+            pendingInvoices: dashboardData.pendingInvoices || 0
+          };
+          console.log('🔍 AdminDashboard: Setting stats to:', newStats);
+          return newStats;
+        });
 
         // Generar datos simulados para los gráficos basados en datos reales
         const mockChartData: ChartData = {
           sales: [
-            dashboardData.totalRevenue || 0,
-            Math.floor((dashboardData.totalRevenue || 0) * 0.9),
-            Math.floor((dashboardData.totalRevenue || 0) * 1.1)
+            dashboardData.totalRevenue || 1200,
+            Math.floor((dashboardData.totalRevenue || 1200) * 0.9),
+            Math.floor((dashboardData.totalRevenue || 1200) * 1.1)
           ],
           orders: [
-            dashboardData.activeOrders || 0,
-            Math.floor((dashboardData.activeOrders || 0) * 0.8),
-            Math.floor((dashboardData.activeOrders || 0) * 1.2)
+            dashboardData.activeOrders || 8,
+            Math.floor((dashboardData.activeOrders || 8) * 0.8),
+            Math.floor((dashboardData.activeOrders || 8) * 1.2)
           ],
           months: ['Enero', 'Febrero', 'Marzo'],
-          lowStockItems: dashboardData.lowStockItems || 0,
+          lowStockItems: dashboardData.lowStockItems || 5,
           totalItems: Math.floor(Math.random() * 100 + 50),
           revenueData: [
-            dashboardData.totalRevenue || 0,
-            Math.floor((dashboardData.totalRevenue || 0) * 0.9),
-            Math.floor((dashboardData.totalRevenue || 0) * 1.1)
+            dashboardData.totalRevenue || 1200,
+            Math.floor((dashboardData.totalRevenue || 1200) * 0.9),
+            Math.floor((dashboardData.totalRevenue || 1200) * 1.1)
           ]
         };
         
@@ -143,36 +164,29 @@ export default function AdminDashboard() {
         setError('Error cargando estadísticas del dashboard');
       }
 
-      // Cargar datos adicionales si están disponibles
+      // Cargar datos adicionales que no vienen en el endpoint principal
       try {
-        const [clientsResponse, vehiclesResponse, inventoryResponse] = await Promise.all([
-          fetch('/api/clients', { headers }),
-          fetch('/api/vehicles', { headers }),
-          fetch('/api/inventory', { headers })
-        ]);
-
-        if (clientsResponse.ok) {
-          const clientsData = await clientsResponse.json();
-          setStats(prev => ({ ...prev, totalClients: clientsData.length || 0 }));
-        }
-
-        if (vehiclesResponse.ok) {
-          const vehiclesData = await vehiclesResponse.json();
-          setStats(prev => ({ ...prev, totalVehicles: vehiclesData.length || 0 }));
-        }
-
-        if (inventoryResponse.ok) {
-          const inventoryData = await inventoryResponse.json();
-          const lowStock = inventoryData.filter((item: any) => 
-            item.currentStock <= (item.minStock || 0)
-          );
-          setStats(prev => ({ ...prev, lowStockItems: lowStock.length }));
+        // Solo cargar clientes activos ya que el endpoint principal no los incluye
+        const activeClientsResponse = await fetch('/api/clients/active-count', { headers });
+        
+        if (activeClientsResponse.ok) {
+          const activeClientsData = await activeClientsResponse.json();
+          console.log('🔍 AdminDashboard: Active clients data received:', activeClientsData);
+          setStats(prev => {
+            const newStats = {
+              ...prev,
+              activeClients: activeClientsData.activeClientsCount || 0
+            };
+            console.log('🔍 AdminDashboard: Updated stats with active clients:', newStats);
+            return newStats;
+          });
         }
       } catch (error) {
-        // Algunas APIs adicionales no están disponibles
+        console.error('❌ AdminDashboard: Error fetching active clients:', error);
       }
 
     } catch (error) {
+      console.error('❌ AdminDashboard: Error in loadDashboardStats:', error);
       setError('Error interno del servidor');
     } finally {
       setLoading(false);
@@ -219,6 +233,7 @@ export default function AdminDashboard() {
 
   // Cargar datos al montar el componente
   useEffect(() => {
+    // console.log('🔍 AdminDashboard: useEffect triggered, loading dashboard stats');
     loadDashboardStats();
     cargarDatosTaller();
   }, [loadDashboardStats, cargarDatosTaller]);
@@ -254,7 +269,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
@@ -551,6 +566,10 @@ export default function AdminDashboard() {
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{calculatedStats.activeClients}</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Clientes Activos</div>
+                    {/* Debug info - Temporal para verificar datos */}
+                    <div className="text-xs text-gray-400 mt-1">
+                      Debug: stats.activeClients = {stats.activeClients}, calculatedStats.activeClients = {calculatedStats.activeClients}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -577,6 +596,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 
+
                 {alertState.hasLowStock && (
                   <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 animate-in slide-in-from-left-2 duration-300">
                     <div className="flex items-center">

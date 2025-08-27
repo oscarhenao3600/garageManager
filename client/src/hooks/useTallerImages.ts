@@ -80,6 +80,16 @@ export const useTallerImages = () => {
           favicon: data.favicon || undefined
         };
         
+        // Asegurar que las rutas de las imágenes sean correctas
+        Object.keys(newImages).forEach(key => {
+          const imageKey = key as keyof TallerImages;
+          if (newImages[imageKey] && !newImages[imageKey]?.startsWith('http')) {
+            // Si la ruta no es absoluta, agregar el dominio base
+            newImages[imageKey] = `http://localhost:5000${newImages[imageKey]}`;
+          }
+        });
+        
+        console.log('🖼️ Imágenes procesadas en useTallerImages:', newImages);
         setImages(newImages);
         aplicarImagenes(newImages);
       }

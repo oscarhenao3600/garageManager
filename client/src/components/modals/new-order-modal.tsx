@@ -83,7 +83,7 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
   });
 
   const { data: operators = [] } = useQuery({
-    queryKey: ['/api/workers'],
+    queryKey: ['/api/operators'],
     enabled: open,
     select: (data: any[]) => data.filter(operator => 
       operator.isActive && operator.role === "operator"
@@ -96,6 +96,8 @@ export default function NewOrderModal({ open, onOpenChange }: NewOrderModalProps
         ...data,
         operatorId: data.operatorId === "none" ? null : parseInt(data.operatorId || "")
       };
+
+      console.log('🔍 Frontend: Sending payload to create order:', payload);
 
       const response = await apiRequest('POST', '/api/service-orders', payload);
       

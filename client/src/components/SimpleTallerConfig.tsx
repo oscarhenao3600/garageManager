@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Save } from "lucide-react";
 import { useTallerImages } from "@/hooks/useTallerImages";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SimpleTallerConfig() {
   const [loading, setLoading] = useState(false);
@@ -15,10 +16,17 @@ export default function SimpleTallerConfig() {
   const [websiteTaller, setWebsiteTaller] = useState("");
   const [tipo, setTipo] = useState<string>("logo");
   const [archivo, setArchivo] = useState<File | null>(null);
-  const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error', texto: string } | null>(null);
-
+  
+  // Usar el hook de toast estándar
+  const { toast } = useToast();
+  
   // Usar el hook personalizado para las imágenes
   const { images, actualizarImagen, eliminarImagen } = useTallerImages();
+  
+  // Debug: mostrar las imágenes cargadas
+  useEffect(() => {
+    console.log('🖼️ Imágenes cargadas en SimpleTallerConfig:', images);
+  }, [images]);
 
   useEffect(() => {
     cargarDatosTaller();
@@ -75,14 +83,19 @@ export default function SimpleTallerConfig() {
       });
 
       if (response.ok) {
-        setMensaje({ tipo: 'success', texto: 'Información del taller actualizada correctamente' });
-        setTimeout(() => setMensaje(null), 3000);
+        toast({
+          title: "✅ Información actualizada",
+          description: "La información del taller se ha actualizado correctamente",
+        });
       } else {
         throw new Error('Error al actualizar la información');
       }
      } catch (error) {
-      setMensaje({ tipo: 'error', texto: 'Error al actualizar la información del taller' });
-      setTimeout(() => setMensaje(null), 3000);
+      toast({
+        title: "❌ Error",
+        description: "Error al actualizar la información del taller",
+        variant: "destructive",
+      });
      } finally {
        setLoading(false);
      }
@@ -110,18 +123,25 @@ export default function SimpleTallerConfig() {
 
       if (response.ok) {
         const data = await response.json();
-        setMensaje({ tipo: 'success', texto: 'Imagen subida correctamente' });
-        setTimeout(() => setMensaje(null), 3000);
+        toast({
+          title: "✅ Imagen subida",
+          description: "La imagen se ha subido correctamente",
+        });
         setArchivo(null);
 
         // Actualizar la imagen usando el hook
-        actualizarImagen(tipo as 'logo' | 'banner' | 'favicon', data.url);
+        // Asegurar que la URL sea completa
+        const imageUrl = data.url.startsWith('http') ? data.url : `http://localhost:5000${data.url}`;
+        actualizarImagen(tipo as 'logo' | 'banner' | 'favicon', imageUrl);
       } else {
         throw new Error('Error al subir la imagen');
       }
     } catch (error) {
-      setMensaje({ tipo: 'error', texto: 'Error al subir la imagen' });
-      setTimeout(() => setMensaje(null), 3000);
+      toast({
+        title: "❌ Error",
+        description: "Error al subir la imagen",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -141,8 +161,10 @@ export default function SimpleTallerConfig() {
       });
 
       if (response.ok) {
-        setMensaje({ tipo: 'success', texto: 'Imagen eliminada correctamente' });
-        setTimeout(() => setMensaje(null), 3000);
+        toast({
+          title: "✅ Imagen eliminada",
+          description: "La imagen se ha eliminado correctamente",
+        });
 
         // Eliminar la imagen usando el hook
         eliminarImagen(tipoImagen as 'logo' | 'banner' | 'favicon');
@@ -150,8 +172,11 @@ export default function SimpleTallerConfig() {
         throw new Error('Error al eliminar la imagen');
       }
     } catch (error) {
-      setMensaje({ tipo: 'error', texto: 'Error al eliminar la imagen' });
-      setTimeout(() => setMensaje(null), 3000);
+      toast({
+        title: "❌ Error",
+        description: "Error al eliminar la imagen",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -320,22 +345,36 @@ export default function SimpleTallerConfig() {
               <div key={tipoImagen} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium capitalize">{tipoImagen}</span>
-                    <Button
+                  <Button
                     onClick={() => eliminarImagenLocal(tipoImagen)}
                     variant="outline"
-                      size="sm"
+                    size="sm"
                     className="text-red-600 hover:text-red-700"
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                  <img
-                    src={url}
-                    alt={tipoImagen}
-                    className="max-w-full max-h-full object-contain rounded-lg"
-                  />
-                  </div>
+                  >
+                    Eliminar
+                  </Button>
+                </div>
+                <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                  {url ? (
+                    <img
+                      src={url}
+                      alt={tipoImagen}
+                      className="max-w-full max-h-full object-contain rounded-lg"
+                      onError={(e) => {
+                        console.error(`Error cargando imagen ${tipoImagen}:`, url);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log(`✅ Imagen ${tipoImagen} cargada correctamente:`, url);
+                      }}
+                    />
+                  ) : (
+                    <div className="text-gray-400 text-sm">Sin imagen</div>
+                  )}
+                </div>
+                <div className="mt-2 text-xs text-gray-500 truncate">
+                  {url ? url.split('/').pop() : 'No hay archivo'}
+                </div>
               </div>
             ))}
           </div>
@@ -350,19 +389,7 @@ export default function SimpleTallerConfig() {
         </CardContent>
       </Card>
 
-      {/* Mensajes */}
-      {mensaje && (
-        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
-          mensaje.tipo === 'success' 
-            ? 'bg-green-100 text-green-800 border border-green-200' 
-            : 'bg-red-100 text-red-800 border border-red-200'
-        }`}>
-          <div className="flex items-center">
-            <Building2 className="h-5 w-5 mr-2" />
-            {mensaje.texto}
-        </div>
-        </div>
-      )}
+
     </div>
   );
 }

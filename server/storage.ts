@@ -74,6 +74,7 @@ export interface IStorage {
 
   // Clients - Tabla separada
   getClients(params: { search?: string; limit?: number }): Promise<Client[]>;
+  getActiveClientsCount(): Promise<number>;
   createClient(client: InsertClient): Promise<Client>;
   getVehiclesByClientId(clientId: number): Promise<Vehicle[]>;
   updateClient(id: number, updates: Partial<typeof clients.$inferInsert>): Promise<Client | undefined>;
@@ -259,17 +260,98 @@ export class DatabaseStorage implements IStorage {
 
   // Dashboard
   async getDashboardStats(): Promise<any> {
-    const [userCount] = await db.select({ count: count() }).from(users);
-    const [vehicleCount] = await db.select({ count: count() }).from(vehicles);
-    const [orderCount] = await db.select({ count: count() }).from(serviceOrders);
-    const [invoiceCount] = await db.select({ count: count() }).from(invoices);
+    console.log('🔍 Storage: getDashboardStats called - fetching comprehensive stats');
+    
+    try {
+      // 1. Total de usuarios (solo clientes)
+      const [totalClientsResult] = await db
+        .select({ count: count() })
+        .from(users)
+        .where(and(eq(users.isActive, true), eq(users.role, 'client')));
+      
+      // 2. Total de vehículos
+      const [totalVehiclesResult] = await db
+        .select({ count: count() })
+        .from(vehicles);
+      
+      // 3. Órdenes activas (pending + in_progress)
+      const [activeOrdersResult] = await db
+        .select({ count: count() })
+        .from(serviceOrders)
+        .where(or(
+          eq(serviceOrders.status, 'pending'),
+          eq(serviceOrders.status, 'in_progress')
+        ));
+      
+      // 4. Total de órdenes
+      const [totalOrdersResult] = await db
+        .select({ count: count() })
+        .from(serviceOrders);
+      
+      // 5. Vehículos en el taller (órdenes activas)
+      const [vehiclesInShopResult] = await db
+        .select({ count: count() })
+        .from(serviceOrders)
+        .where(or(
+          eq(serviceOrders.status, 'pending'),
+          eq(serviceOrders.status, 'in_progress')
+        ));
+      
+      // 6. Items con stock bajo
+      const [lowStockResult] = await db
+        .select({ count: count() })
+        .from(inventoryItems)
+        .where(sql`current_stock <= min_stock`);
+      
+      // 7. Total de items en inventario
+      const [totalItemsResult] = await db
+        .select({ count: count() })
+        .from(inventoryItems);
+      
+      // 8. Ingresos totales (suma de finalCost de órdenes completadas)
+      const [totalRevenueResult] = await db
+        .select({ 
+          total: sql<number>`COALESCE(SUM(CAST(${serviceOrders.finalCost} AS DECIMAL)), 0)` 
+        })
+        .from(serviceOrders)
+        .where(eq(serviceOrders.status, 'completed'));
+      
+      // 9. Facturas pendientes
+      const [pendingInvoicesResult] = await db
+        .select({ count: count() })
+        .from(invoices)
+        .where(eq(invoices.status, 'pending'));
 
+      const stats = {
+        totalClients: totalClientsResult.count,
+        totalVehicles: totalVehiclesResult.count,
+        activeOrders: activeOrdersResult.count,
+        totalOrders: totalOrdersResult.count,
+        vehiclesInShop: vehiclesInShopResult.count,
+        lowStockItems: lowStockResult.count,
+        totalItems: totalItemsResult.count,
+        totalRevenue: Number(totalRevenueResult.total) || 0,
+        pendingInvoices: pendingInvoicesResult.count
+      };
+
+      console.log('🔍 Storage: getDashboardStats result:', stats);
+      return stats;
+      
+    } catch (error) {
+      console.error('❌ Storage: getDashboardStats error:', error);
+      // Retornar valores por defecto en caso de error
     return {
-      totalUsers: userCount.count,
-      totalVehicles: vehicleCount.count,
-      totalOrders: orderCount.count,
-      totalInvoices: invoiceCount.count
-    };
+        totalClients: 0,
+        totalVehicles: 0,
+        activeOrders: 0,
+        totalOrders: 0,
+        vehiclesInShop: 0,
+        lowStockItems: 0,
+        totalItems: 0,
+        totalRevenue: 0,
+        pendingInvoices: 0
+      };
+    }
   }
 
   async getOperatorDashboardStats(operatorId: number): Promise<any> {
@@ -311,9 +393,10 @@ export class DatabaseStorage implements IStorage {
 
   // Service Orders
   async getServiceOrders(params: { status?: string; limit?: number; userId?: number; userRole?: string }): Promise<ServiceOrder[]> {
+    console.log('🔍 Storage: getServiceOrders called with params:', params);
 
     try {
-      const query = db
+      let query = db
         .select({
           id: serviceOrders.id,
           orderNumber: serviceOrders.orderNumber,
@@ -343,7 +426,7 @@ export class DatabaseStorage implements IStorage {
           }
         })
         .from(serviceOrders)
-        .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+        .leftJoin(users, eq(serviceOrders.clientId, users.id))
         .leftJoin(vehicles, eq(serviceOrders.vehicleId, vehicles.id));
 
     // Filtrar por rol del usuario
@@ -399,8 +482,10 @@ export class DatabaseStorage implements IStorage {
     }
 
       const result = await query;
+      console.log('🔍 Storage: getServiceOrders result:', result.length, 'orders found');
       return result;
     } catch (error) {
+      console.error('❌ Storage: getServiceOrders error:', error);
       // Fallback: retornar array vacío en caso de error
       return [];
     }
@@ -424,10 +509,10 @@ export class DatabaseStorage implements IStorage {
           vehicleId: serviceOrders.vehicleId,
           operatorId: serviceOrders.operatorId,
           client: {
-            id: clients.id,
-            firstName: clients.firstName,
-            lastName: clients.lastName,
-            documentNumber: clients.documentNumber,
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            documentNumber: users.documentNumber,
           },
           vehicle: {
             id: vehicles.id,
@@ -438,7 +523,7 @@ export class DatabaseStorage implements IStorage {
           }
         })
         .from(serviceOrders)
-        .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+        .leftJoin(users, eq(serviceOrders.clientId, users.id))
         .leftJoin(vehicles, eq(serviceOrders.vehicleId, vehicles.id))
         .where(eq(serviceOrders.id, id));
 
@@ -481,8 +566,8 @@ export class DatabaseStorage implements IStorage {
     // Verificar si el cliente existe
     const [client] = await db
       .select()
-      .from(clients)
-      .where(eq(clients.id, clientId));
+      .from(users)
+      .where(eq(users.id, clientId));
     
     // Verificar vehículos del cliente
     const clientVehicles = await db
@@ -505,19 +590,23 @@ export class DatabaseStorage implements IStorage {
 
   async createServiceOrder(order: InsertServiceOrder): Promise<ServiceOrder> {
     try {
+      console.log('🔍 Storage: Creating service order with data:', order);
+      
       // Validar campos obligatorios
       if (!order.clientId || !order.vehicleId || !order.description) {
         throw new Error('clientId, vehicleId y description son campos obligatorios');
       }
 
       // Generar orderNumber automáticamente
-      const orderCount = await this.getServiceOrderCount();
+      let orderCount = await this.getServiceOrderCount();
+      console.log('📊 Storage: Current order count:', orderCount);
       
       if (orderCount === null || orderCount === undefined) {
         orderCount = 0;
       }
       
       const orderNumber = `OS-${String(orderCount + 1).padStart(4, '0')}-${new Date().getFullYear()}`;
+      console.log('🏷️ Storage: Generated order number:', orderNumber);
       
       const orderData = {
         ...order,
@@ -526,9 +615,13 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       };
       
+      console.log('💾 Storage: Final order data to insert:', orderData);
+      
       const [newOrder] = await db.insert(serviceOrders).values(orderData).returning();
+      console.log('✅ Storage: Order created successfully:', newOrder);
       return newOrder;
     } catch (error) {
+      console.error('❌ Storage: Error creating service order:', error);
       throw error;
     }
   }
@@ -596,21 +689,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Clientes - Tabla separada
+  async getActiveClientsCount(): Promise<number> {
+    // console.log('🔍 Storage: getActiveClientsCount called');
+    const [result] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(and(eq(users.isActive, true), eq(users.role, 'client')));
+    // console.log('🔍 Storage: getActiveClientsCount result:', result.count);
+    return result.count;
+  }
+
   async getClients(params: { search?: string; limit?: number }): Promise<Client[]> {
-    let query = db.select().from(clients);
+    let query = db.select().from(users).where(and(eq(users.isActive, true), eq(users.role, 'client')));
 
     if (params.search) {
       query = query.where(
-        or(
-          like(clients.firstName, `%${params.search}%`),
-          like(clients.lastName, `%${params.search}%`),
-          like(clients.documentNumber, `%${params.search}%`),
-          like(clients.phone, `%${params.search}%`)
+        and(
+          eq(users.isActive, true),
+          eq(users.role, 'client'),
+          or(
+            like(users.firstName, `%${params.search}%`),
+            like(users.lastName, `%${params.search}%`),
+            like(users.documentNumber, `%${params.search}%`),
+            like(users.phone, `%${params.search}%`)
+          )
         )
       );
     }
 
-    query = query.orderBy(asc(clients.firstName));
+    query = query.orderBy(asc(users.firstName));
 
     if (params.limit) {
       query = query.limit(params.limit);
@@ -633,7 +740,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(clients)
       .set(updates)
-      .where(eq(clients.id, id))
+      .where(eq(users.id, id))
       .returning();
     return updated || undefined;
   }
@@ -664,20 +771,20 @@ export class DatabaseStorage implements IStorage {
           isActive: vehicles.isActive,
           createdAt: vehicles.createdAt,
           client: {
-            id: clients.id,
-            firstName: clients.firstName,
-            lastName: clients.lastName,
-            documentNumber: clients.documentNumber,
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            documentNumber: users.documentNumber,
           }
         })
         .from(vehicles)
-        .leftJoin(clients, eq(vehicles.clientId, clients.id));
+        .leftJoin(users, eq(vehicles.clientId, users.id));
 
       if (params.search) {
         query = query.where(
           or(
             like(vehicles.plate, `%${params.search}%`),
-            like(clients.documentNumber, `%${params.search}%`)
+            like(users.documentNumber, `%${params.search}%`)
           )
         );
       }
@@ -743,17 +850,17 @@ export class DatabaseStorage implements IStorage {
         color: vehicles.color,
         mileage: vehicles.mileage,
         client: {
-          firstName: clients.firstName,
-          lastName: clients.lastName,
-          documentNumber: clients.documentNumber,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          documentNumber: users.documentNumber,
         }
       })
       .from(vehicles)
-      .leftJoin(clients, eq(vehicles.clientId, clients.id))
+      .leftJoin(clients, eq(vehicles.clientId, users.id))
       .where(
         or(
           like(vehicles.plate, `%${query}%`),
-          like(clients.documentNumber, `%${query}%`)
+          like(users.documentNumber, `%${query}%`)
         )
       )
       .orderBy(asc(vehicles.brand));
@@ -1008,7 +1115,7 @@ export class DatabaseStorage implements IStorage {
         })
         .from(invoices)
         .leftJoin(serviceOrders, eq(invoices.serviceOrderId, serviceOrders.id))
-        .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+        .leftJoin(users, eq(serviceOrders.clientId, users.id))
         .leftJoin(vehicles, eq(serviceOrders.vehicleId, vehicles.id));
 
       if (params.status) {
@@ -1381,10 +1488,10 @@ export class DatabaseStorage implements IStorage {
           vehicleId: serviceOrders.vehicleId,
           operatorId: serviceOrders.operatorId,
           client: {
-            id: clients.id,
-            firstName: clients.firstName,
-            lastName: clients.lastName,
-            documentNumber: clients.documentNumber,
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            documentNumber: users.documentNumber,
           },
           vehicle: {
             id: vehicles.id,
@@ -1395,7 +1502,7 @@ export class DatabaseStorage implements IStorage {
           }
         })
         .from(serviceOrders)
-        .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+        .leftJoin(users, eq(serviceOrders.clientId, users.id))
         .leftJoin(vehicles, eq(serviceOrders.vehicleId, vehicles.id))
         .where(eq(serviceOrders.operatorId, operatorId))
         .orderBy(desc(serviceOrders.createdAt));
@@ -1422,10 +1529,10 @@ export class DatabaseStorage implements IStorage {
           vehicleId: serviceOrders.vehicleId,
           operatorId: serviceOrders.operatorId,
           client: {
-            id: clients.id,
-            firstName: clients.firstName,
-            lastName: clients.lastName,
-            documentNumber: clients.documentNumber,
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            documentNumber: users.documentNumber,
           },
           vehicle: {
             id: vehicles.id,
@@ -1436,7 +1543,7 @@ export class DatabaseStorage implements IStorage {
           }
         })
         .from(serviceOrders)
-        .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+        .leftJoin(users, eq(serviceOrders.clientId, users.id))
         .leftJoin(vehicles, eq(serviceOrders.vehicleId, vehicles.id))
         .where(eq(serviceOrders.operatorId, operatorId))
         .orderBy(desc(serviceOrders.createdAt));

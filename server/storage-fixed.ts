@@ -210,7 +210,7 @@ export class DatabaseStorage implements IStorage {
       totalInvoices: invoiceCount.count
     };
   }
-
+ 
   async getOperatorDashboardStats(operatorId: number): Promise<any> {
     const [orderCount] = await db
       .select({ count: count() })

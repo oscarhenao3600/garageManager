@@ -92,6 +92,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
   
+  // Test endpoint to get service orders without filters
+  app.get("/api/service-orders-debug", async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 Debug: Getting service orders without filters');
+      const orders = await dbStorage.getServiceOrders({
+        limit: 50
+      });
+      console.log('🔍 Debug: Found orders:', orders.length);
+      res.json(orders);
+    } catch (error) {
+      console.error('❌ Debug: Error getting service orders:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   // Serve static files from uploads directory
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
   
@@ -633,6 +648,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  app.get("/api/clients/active-count", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      // console.log('🔍 Routes: /api/clients/active-count called');
+      const activeClientsCount = await dbStorage.getActiveClientsCount();
+      // console.log('🔍 Routes: /api/clients/active-count result:', activeClientsCount);
+      res.json({ activeClientsCount });
+    } catch (error) {
+      console.error("Get active clients count error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+
 
   app.patch("/api/clients/:id", authenticateToken, async (req: Request, res: Response) => {
     try {
@@ -1282,6 +1311,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(workers);
     } catch (error) {
       console.error("Get workers error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Endpoint para obtener operarios (accesible para operarios y administradores)
+  app.get("/api/operators", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      
+      // Solo operarios y administradores pueden ver la lista de operarios
+      if (authReq.user.role !== 'admin' && authReq.user.role !== 'superAdmin' && authReq.user.role !== 'operator') {
+        return res.status(403).json({ 
+          message: "No tienes permisos para ver la lista de operarios" 
+        });
+      }
+
+      const workers = await dbStorage.getWorkers();
+      res.json(workers);
+    } catch (error) {
+      console.error("Get operators error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -2071,7 +2120,257 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Servir archivos estáticos de imágenes
   app.use('/uploads', express.static('uploads'));
 
+  // Simple test endpoint without authentication
+  app.get("/api/test", (req: Request, res: Response) => {
+    res.json({ 
+      message: "Test endpoint working",
+      timestamp: new Date().toISOString(),
+      server: "running"
+    });
+  });
 
+
+
+  // Test endpoint for service orders
+  app.get("/api/service-orders/test", (req: Request, res: Response) => {
+    res.json({ 
+      message: "Service orders endpoint is working",
+      timestamp: new Date().toISOString(),
+      schema: "insertServiceOrderSchema is available"
+    });
+  });
+
+  // Database diagnostic endpoint
+  app.get("/api/db-diagnostic", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 Running database diagnostic...');
+      
+      // Verificar si las tablas existen y tienen datos
+      const diagnostic = {
+        timestamp: new Date().toISOString(),
+        tables: {},
+        relationships: {},
+        errors: []
+      };
+
+      try {
+        // Verificar tabla clients
+        const clientsCount = await dbStorage.getClients({ limit: 1 });
+        diagnostic.tables.clients = {
+          exists: true,
+          count: clientsCount.length,
+          sample: clientsCount[0] ? {
+            id: clientsCount[0].id,
+            firstName: clientsCount[0].firstName,
+            lastName: clientsCount[0].lastName
+          } : null
+        };
+      } catch (error) {
+        diagnostic.tables.clients = { exists: false, error: error.message };
+        diagnostic.errors.push(`Clients table error: ${error.message}`);
+      }
+
+      try {
+        // Verificar tabla vehicles
+        const vehiclesCount = await dbStorage.getVehicles({ limit: 1 });
+        diagnostic.tables.vehicles = {
+          exists: true,
+          count: vehiclesCount.length,
+          sample: vehiclesCount[0] ? {
+            id: vehiclesCount[0].id,
+            plate: vehiclesCount[0].plate,
+            clientId: vehiclesCount[0].clientId
+          } : null
+        };
+      } catch (error) {
+        diagnostic.tables.vehicles = { exists: false, error: error.message };
+        diagnostic.errors.push(`Vehicles table error: ${error.message}`);
+      }
+
+      try {
+        // Verificar tabla users
+        const usersCount = await dbStorage.getUsers({ limit: 1 });
+        diagnostic.tables.users = {
+          exists: true,
+          count: usersCount.length,
+          sample: usersCount[0] ? {
+            id: usersCount[0].id,
+            username: usersCount[0].username,
+            role: usersCount[0].role
+          } : null
+        };
+      } catch (error) {
+        diagnostic.tables.users = { exists: false, error: error.message };
+        diagnostic.errors.push(`Users table error: ${error.message}`);
+      }
+
+      try {
+        // Verificar tabla service_orders
+        const ordersCount = await dbStorage.getServiceOrders({ limit: 1 });
+        diagnostic.tables.serviceOrders = {
+          exists: true,
+          count: ordersCount.length,
+          sample: ordersCount[0] ? {
+            id: ordersCount[0].id,
+            orderNumber: ordersCount[0].orderNumber,
+            status: ordersCount[0].status
+          } : null
+        };
+      } catch (error) {
+        diagnostic.tables.serviceOrders = { exists: false, error: error.message };
+        diagnostic.errors.push(`Service orders table error: ${error.message}`);
+      }
+
+      // Verificar relaciones
+      try {
+        if (diagnostic.tables.clients.exists && diagnostic.tables.vehicles.exists) {
+          const clientWithVehicle = await dbStorage.getClients({ limit: 1 });
+          if (clientWithVehicle.length > 0) {
+            const clientId = clientWithVehicle[0].id;
+            const clientVehicles = await dbStorage.getVehicles({ clientId });
+            diagnostic.relationships.clientToVehicle = {
+              working: true,
+              clientId,
+              vehicleCount: clientVehicles.length
+            };
+          }
+        }
+      } catch (error) {
+        diagnostic.relationships.clientToVehicle = {
+          working: false,
+          error: error.message
+        };
+        diagnostic.errors.push(`Client-Vehicle relationship error: ${error.message}`);
+      }
+
+      console.log('✅ Database diagnostic completed:', diagnostic);
+      res.json(diagnostic);
+      
+    } catch (error) {
+      console.error('❌ Database diagnostic failed:', error);
+      res.status(500).json({ 
+        error: 'Database diagnostic failed', 
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Database diagnostic endpoint
+  app.get("/api/db-diagnostic", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 Running database diagnostic...');
+      
+      // Verificar si las tablas existen y tienen datos
+      const diagnostic = {
+        timestamp: new Date().toISOString(),
+        tables: {},
+        relationships: {},
+        errors: []
+      };
+
+      try {
+        // Verificar tabla clients
+        const clientsCount = await dbStorage.getClients({ limit: 1 });
+        diagnostic.tables.clients = {
+          exists: true,
+          count: clientsCount.length,
+          sample: clientsCount[0] ? {
+            id: clientsCount[0].id,
+            firstName: clientsCount[0].firstName,
+            lastName: clientsCount[0].lastName
+          } : null
+        };
+      } catch (error) {
+        diagnostic.tables.clients = { exists: false, error: error.message };
+        diagnostic.errors.push(`Clients table error: ${error.message}`);
+      }
+
+      try {
+        // Verificar tabla vehicles
+        const vehiclesCount = await dbStorage.getVehicles({ limit: 1 });
+        diagnostic.tables.vehicles = {
+          exists: true,
+          count: vehiclesCount.length,
+          sample: vehiclesCount[0] ? {
+            id: vehiclesCount[0].id,
+            plate: vehiclesCount[0].plate,
+            clientId: vehiclesCount[0].clientId
+          } : null
+        };
+      } catch (error) {
+        diagnostic.tables.vehicles = { exists: false, error: error.message };
+        diagnostic.errors.push(`Vehicles table error: ${error.message}`);
+      }
+
+      try {
+        // Verificar tabla users
+        const usersCount = await dbStorage.getUsers({ limit: 1 });
+        diagnostic.tables.users = {
+          exists: true,
+          count: usersCount.length,
+          sample: usersCount[0] ? {
+            id: usersCount[0].id,
+            username: usersCount[0].username,
+            role: usersCount[0].role
+          } : null
+        };
+      } catch (error) {
+        diagnostic.tables.users = { exists: false, error: error.message };
+        diagnostic.errors.push(`Users table error: ${error.message}`);
+      }
+
+      try {
+        // Verificar tabla service_orders
+        const ordersCount = await dbStorage.getServiceOrders({ limit: 1 });
+        diagnostic.tables.serviceOrders = {
+          exists: true,
+          count: ordersCount.length,
+          sample: ordersCount[0] ? {
+            id: ordersCount[0].id,
+            orderNumber: ordersCount[0].orderNumber,
+            status: ordersCount[0].status
+          } : null
+        };
+      } catch (error) {
+        diagnostic.tables.serviceOrders = { exists: false, error: error.message };
+        diagnostic.errors.push(`Service orders table error: ${error.message}`);
+      }
+
+      // Verificar relaciones
+      try {
+        if (diagnostic.tables.clients.exists && diagnostic.tables.vehicles.exists) {
+          const clientWithVehicle = await dbStorage.getClients({ limit: 1 });
+          if (clientWithVehicle.length > 0) {
+            const clientId = clientWithVehicle[0].id;
+            const clientVehicles = await dbStorage.getVehicles({ clientId });
+            diagnostic.relationships.clientToVehicle = {
+              working: true,
+              clientId,
+              vehicleCount: clientVehicles.length
+            };
+          }
+        }
+      } catch (error) {
+        diagnostic.relationships.clientToVehicle = {
+          working: false,
+          error: error.message
+        };
+        diagnostic.errors.push(`Client-Vehicle relationship error: ${error.message}`);
+      }
+
+      console.log('✅ Database diagnostic completed:', diagnostic);
+      res.json(diagnostic);
+      
+    } catch (error) {
+      console.error('❌ Database diagnostic failed:', error);
+      res.status(500).json({ 
+        error: 'Database diagnostic failed', 
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

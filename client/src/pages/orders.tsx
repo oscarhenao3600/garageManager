@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Play, UserPlus } from "lucide-react";
+import { Plus, Search, Play, UserPlus, RefreshCw } from "lucide-react";
 import NewOrderModal from "@/components/modals/new-order-modal";
 import AssignOperatorModal from "@/components/modals/assign-operator-modal";
 import OrderDetailsModal from "@/components/modals/order-details-modal";
@@ -29,7 +29,7 @@ export default function Orders() {
   const canCreateOrders = !isClient; // Solo admin, operator, etc. pueden crear órdenes
   const canManageOrders = !isClient; // Solo admin, operator, etc. pueden gestionar órdenes
 
-  const { data: orders = [], isLoading, error } = useQuery({
+  const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['service-orders', { status: statusFilter, userId: user?.id, userRole: user?.role }],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -45,17 +45,27 @@ export default function Orders() {
         params.append('userRole', user.role);
       }
       try {
+        console.log('🔍 Fetching orders...', { params: params.toString(), user: user?.id, role: user?.role });
         const response = await apiRequest('GET', `/api/service-orders?${params}`);
         const data = await response.json();
-        console.log('Service Orders Data:', data); // Para depuración
+        console.log('✅ Orders received:', data);
         return data;
       } catch (err) {
-        console.error('Error fetching service orders:', err);
+        console.error('❌ Error fetching orders:', err);
         throw err;
       }
     },
     retry: 1,
     refetchOnWindowFocus: false
+  });
+
+  // Debug logs
+  console.log('📊 Orders state:', { 
+    isLoading, 
+    error, 
+    ordersCount: orders?.length || 0,
+    user: user?.id,
+    userRole: user?.role 
   });
 
   const getStatusColor = (status: string) => {
@@ -180,9 +190,28 @@ export default function Orders() {
       <div className="p-6">
         <Card>
           <CardContent className="p-6">
-            <div className="text-center">
+            <div className="text-center space-y-4">
               <h2 className="text-lg font-semibold text-red-600 mb-2">Error al cargar las órdenes</h2>
-              <p className="text-gray-600">Por favor, intenta recargar la página</p>
+              <p className="text-gray-600 mb-4">Se produjo un error al intentar cargar las órdenes de servicio</p>
+              <div className="text-sm text-gray-500 space-y-2">
+                <p>• Verifica que el backend esté funcionando</p>
+                <p>• Revisa la consola del navegador para más detalles</p>
+                <p>• Asegúrate de estar autenticado correctamente</p>
+              </div>
+              <div className="flex justify-center space-x-4">
+                <Button 
+                  onClick={() => refetch()}
+                  variant="outline"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Reintentar
+                </Button>
+                <Button 
+                  onClick={() => window.location.reload()}
+                >
+                  Recargar Página
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -206,12 +235,22 @@ export default function Orders() {
               }
             </p>
           </div>
-          {canCreateOrders && (
-            <Button onClick={() => setShowNewOrderModal(true)} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Orden
+          <div className="flex space-x-2">
+            <Button 
+              onClick={() => refetch()} 
+              variant="outline"
+              disabled={isLoading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Actualizar
             </Button>
-          )}
+            {canCreateOrders && (
+              <Button onClick={() => setShowNewOrderModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Orden
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Filters */}
@@ -256,7 +295,23 @@ export default function Orders() {
           {filteredOrders.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
-                <p className="text-gray-500">No se encontraron órdenes</p>
+                <div className="space-y-4">
+                  <p className="text-gray-500 text-lg">No se encontraron órdenes de servicio</p>
+                  <div className="text-sm text-gray-400 space-y-2">
+                    <p>• Verifica que tengas permisos para ver órdenes</p>
+                    <p>• Asegúrate de que el backend esté funcionando</p>
+                    <p>• Revisa la consola del navegador para errores</p>
+                  </div>
+                  {canCreateOrders && (
+                    <Button 
+                      onClick={() => setShowNewOrderModal(true)}
+                      className="mt-4"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Crear Primera Orden
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ) : (
@@ -303,15 +358,65 @@ export default function Orders() {
                         </div>
                       </div>
 
+                      {/* Información adicional del modelo */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {/* Tiempos */}
+                        <div>
+                          <p className="text-sm font-medium text-gray-500 mb-1">Tiempos</p>
+                          <div className="space-y-1">
+                            {order.estimatedTime && (
+                              <p className="text-xs text-gray-600">
+                                Estimado: {Math.floor(order.estimatedTime / 60)}h {order.estimatedTime % 60}min
+                              </p>
+                            )}
+                            {order.actualTime && (
+                              <p className="text-xs text-gray-600">
+                                Real: {Math.floor(order.actualTime / 60)}h {order.actualTime % 60}min
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Fechas importantes */}
+                        <div>
+                          <p className="text-sm font-medium text-gray-500 mb-1">Fechas</p>
+                          <div className="space-y-1">
+                            {order.startDate && (
+                              <p className="text-xs text-gray-600">
+                                Inicio: {new Date(order.startDate).toLocaleDateString('es-CO')}
+                              </p>
+                            )}
+                            {order.completionDate && (
+                              <p className="text-xs text-gray-600">
+                                Finalización: {new Date(order.completionDate).toLocaleDateString('es-CO')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="mb-4">
                         <p className="text-sm font-medium text-gray-500 mb-1">Descripción</p>
                         <p className="text-sm text-gray-700">{order.description}</p>
                       </div>
 
+                      {/* Información de costos y toma de orden */}
                       <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Creado: {new Date(order.createdAt).toLocaleDateString('es-CO')}</span>
-                        {order.estimatedCost && (
-                          <span>Costo estimado: ${order.estimatedCost}</span>
+                        <div className="flex items-center space-x-4">
+                          <span>Creado: {new Date(order.createdAt).toLocaleDateString('es-CO')}</span>
+                          {order.estimatedCost && (
+                            <span>Costo estimado: ${order.estimatedCost}</span>
+                          )}
+                          {order.finalCost && (
+                            <span className="font-medium text-green-600">
+                              Costo final: ${order.finalCost}
+                            </span>
+                          )}
+                        </div>
+                        {order.takenBy && order.takenAt && (
+                          <span className="text-blue-600">
+                            Tomada por: {order.takenBy} - {new Date(order.takenAt).toLocaleDateString('es-CO')}
+                          </span>
                         )}
                       </div>
                     </div>
