@@ -333,8 +333,6 @@ export class DatabaseStorage implements IStorage {
         totalRevenue: Number(totalRevenueResult.total) || 0,
         pendingInvoices: pendingInvoicesResult.count
       };
-
-      console.log('🔍 Storage: getDashboardStats result:', stats);
       return stats;
       
     } catch (error) {
@@ -1548,6 +1546,29 @@ export class DatabaseStorage implements IStorage {
         .where(eq(serviceOrders.operatorId, operatorId))
         .orderBy(desc(serviceOrders.createdAt));
     } catch (error) {
+      return [];
+    }
+  }
+
+  // Método para obtener todos los usuarios (para mensajería)
+  async getUsers(): Promise<any[]> {
+    try {
+      return await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+          isActive: users.isActive,
+          createdAt: users.createdAt
+        })
+        .from(users)
+        .where(eq(users.isActive, true))
+        .orderBy(asc(users.username));
+    } catch (error) {
+      console.error('Error getting users:', error);
       return [];
     }
   }

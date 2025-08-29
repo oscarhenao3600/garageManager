@@ -1,6 +1,6 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { dbStorage } from "./storage";
+import { dbStorage } from "./storage-simple";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { insertUserSchema, insertClientSchema, insertVehicleSchema, insertServiceOrderSchema, insertInventoryItemSchema, insertNotificationSchema, insertVehicleTypeSchema, insertChecklistItemSchema } from "../shared/schema";
@@ -465,12 +465,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status, limit = 50 } = req.query;
       const authReq = req as AuthenticatedRequest;
       
-      const orders = await dbStorage.getServiceOrders({
-        limit: parseInt(limit.toString()),
-        userId: authReq.user.id,
-        userRole: authReq.user.role,
-      });
-      res.json(orders);
+      // Usar el nuevo método que incluye detalles del cliente y vehículo
+      const orders = await dbStorage.getServiceOrdersWithDetails();
+      
+      // Aplicar filtros si se especifican
+      let filteredOrders = orders;
+      if (status) {
+        filteredOrders = orders.filter(order => order.status === status);
+      }
+      if (limit) {
+        filteredOrders = filteredOrders.slice(0, parseInt(limit.toString()));
+      }
+      
+      res.json(filteredOrders);
     } catch (error) {
       console.error("Get service orders error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -1331,6 +1338,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(workers);
     } catch (error) {
       console.error("Get operators error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Endpoint para obtener todos los usuarios (para mensajería)
+  app.get("/api/users", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      if (authReq.user.role !== 'admin' && authReq.user.role !== 'superAdmin') {
+        return res.status(403).json({ message: "No tienes permisos para ver la lista de usuarios" });
+      }
+      const users = await dbStorage.getUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Get users error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

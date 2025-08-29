@@ -125,3 +125,4 @@ WHERE so.operator_id IS NOT NULL AND u.id IS NULL;
 -- FROM information_schema.role_table_grants 
 -- WHERE table_name = 'service_orders';
 
+

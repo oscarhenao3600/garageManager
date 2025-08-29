@@ -13,7 +13,8 @@ import {
   FileText, 
   Bell, 
   LogOut,
-  Wrench
+  Wrench,
+  MessageSquare
 } from "lucide-react";
 
 interface StatsSection {
@@ -44,6 +45,7 @@ const menuItems: MenuItem[] = [
   { path: "/workers", label: "Operarios", icon: HardHat, role: "admin" },
   { path: "/billing", label: "Facturación", icon: FileText, role: "admin" },
   { path: "/notifications", label: "Notificaciones", icon: Bell },
+  { path: "/messaging", label: "Mensajería", icon: MessageSquare },
 ];
 
 export default function Sidebar() {

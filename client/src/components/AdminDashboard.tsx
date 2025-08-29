@@ -595,9 +595,7 @@ export default function AdminDashboard() {
                     <div className="text-sm text-gray-600 dark:text-gray-400">Total de Items</div>
                   </div>
                 </div>
-                
-
-                {alertState.hasLowStock && (
+                            {alertState.hasLowStock && (
                   <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 animate-in slide-in-from-left-2 duration-300">
                     <div className="flex items-center">
                       <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />

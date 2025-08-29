@@ -13,6 +13,7 @@ import Inventory from "@/pages/inventory";
 import Workers from "@/pages/workers";
 import Billing from "@/pages/billing";
 import Notifications from "@/pages/notifications";
+import Messaging from "@/pages/messaging";
 import Settings from "@/pages/settings";
 import OperatorOrderManagement from "@/components/OperatorOrderManagement";
 import NotFound from "@/pages/not-found";
@@ -89,6 +90,7 @@ function Router() {
         <Route path="/workers" component={Workers} />
         <Route path="/billing" component={Billing} />
         <Route path="/notifications" component={Notifications} />
+        <Route path="/messaging" component={Messaging} />
         <Route path="/settings" component={Settings} />
         <Route path="/operator-order-management" component={OperatorOrderManagement} />
         <Route component={NotFound} />
