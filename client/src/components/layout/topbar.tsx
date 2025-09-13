@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Bell } from "lucide-react";
+import { Search, Plus, Bell, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import NewOrderModal from "@/components/modals/new-order-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { useTallerImages } from "@/hooks/useTallerImages";
+import { useWebSocket } from "@/hooks/use-websocket";
 // import { useTaller } from "@/contexts/TallerContext";
 
 export default function Topbar() {
@@ -13,6 +14,7 @@ export default function Topbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [tallerNombre, setTallerNombre] = useState("Mi Taller");
   const { user } = useAuth();
+  const { isConnected } = useWebSocket();
   
   // Usar el hook de imágenes del taller
   const { images } = useTallerImages();
@@ -140,6 +142,17 @@ export default function Topbar() {
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-medium">
                     {unreadCount}
                   </span>
+                )}
+              </Button>
+            </div>
+            
+            {/* WebSocket Connection Status */}
+            <div className="flex items-center">
+              <Button variant="ghost" size="icon" className="h-12 w-12" title={isConnected ? "Conectado en tiempo real" : "Desconectado"}>
+                {isConnected ? (
+                  <Wifi className="h-5 w-5 text-green-500" />
+                ) : (
+                  <WifiOff className="h-5 w-5 text-red-500" />
                 )}
               </Button>
             </div>

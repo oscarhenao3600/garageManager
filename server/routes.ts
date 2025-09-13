@@ -1,6 +1,6 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { dbStorage } from "./storage-simple";
+import { dbStorage } from "./storage";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { insertUserSchema, insertClientSchema, insertVehicleSchema, insertServiceOrderSchema, insertInventoryItemSchema, insertNotificationSchema, insertVehicleTypeSchema, insertChecklistItemSchema } from "../shared/schema";
@@ -17,6 +17,7 @@ import { authenticateToken, isAdmin, isSuperAdmin, isOperatorOrHigher, canAccess
 import reportsRouter from "./routes/reports";
 import imagesRouter from "./routes/images";
 import exportRouter from "./routes/export";
+import { websocketManager } from "./utils/websocketManager";
 
 // La interfaz AuthenticatedRequest ahora se importa desde authMiddleware
 
@@ -465,8 +466,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status, limit = 50 } = req.query;
       const authReq = req as AuthenticatedRequest;
       
-      // Usar el nuevo método que incluye detalles del cliente y vehículo
-      const orders = await dbStorage.getServiceOrdersWithDetails();
+      // Usar el método que incluye detalles del cliente y vehículo
+      const orders = await dbStorage.getServiceOrders({
+        limit: parseInt(limit.toString())
+      });
       
       // Aplicar filtros si se especifican
       let filteredOrders = orders;
@@ -996,9 +999,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         operatorAction: "take"
       });
 
-      res.json({
-        message: "Orden tomada exitosamente",
-        order: updatedOrder
+      // Enviar notificación automática a administradores
+      const notificationData = {
+        id: `auto-${Date.now()}`,
+        type: 'info' as const,
+        title: 'Orden Tomada por Operario',
+        message: `El operario ha tomado la orden ${updatedOrder.orderNumber}`,
+        category: 'system',
+        requiresResponse: false,
+        data: {
+          serviceOrderId: updatedOrder.id,
+          operatorId: operatorId,
+          orderNumber: updatedOrder.orderNumber
+        }
+      };
+
+      websocketManager.sendNotificationToAdmins(notificationData);
+      websocketManager.sendServiceOrderUpdate(operatorId, {
+        type: 'order_taken',
+        orderId: updatedOrder.id
+      });
+
+      res.json({ 
+        message: "Orden tomada exitosamente", 
+        order: updatedOrder 
       });
     } catch (error) {
       console.error("Take service order error:", error);
@@ -1486,6 +1510,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         responseToId: null,
       });
 
+      // Enviar notificación en tiempo real via WebSocket
+      const notificationData = {
+        id: notification.id.toString(),
+        type: (type === 'order_issue' ? 'warning' : 'info') as 'warning' | 'info',
+        title: notification.title,
+        message: notification.message,
+        category: notification.category,
+        userId: notification.toUserId,
+        requiresResponse: notification.requiresResponse,
+        data: {
+          serviceOrderId: notification.serviceOrderId,
+          priority: notification.priority
+        }
+      };
+
+      // Enviar según la categoría
+      if (category === 'operator_to_admin') {
+        websocketManager.sendNotificationToAdmins(notificationData);
+      } else if (category === 'admin_to_operator' && toUserId) {
+        websocketManager.sendNotificationToUser(toUserId, notificationData);
+      } else if (category === 'system') {
+        websocketManager.sendSystemNotification(notificationData);
+      }
+
       res.status(201).json(notification);
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -1616,6 +1664,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verificar permisos - cualquier usuario autenticado puede marcar como leída
       await dbStorage.markNotificationAsRead(parseInt(id));
+      
+      // Enviar actualización en tiempo real
+      websocketManager.sendDashboardUpdate(requestingUser.id, {
+        type: 'notification_read',
+        notificationId: parseInt(id)
+      });
+      
       res.json({ message: 'Notificación marcada como leída' });
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -1645,6 +1700,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: 'Estado actualizado' });
     } catch (error) {
       console.error('Error updating notification status:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+
+  // Endpoint para configuración de notificaciones
+  app.put('/api/notifications/settings', authenticateToken, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const settings = req.body;
+
+      // Guardar configuración en la base de datos
+      await dbStorage.updateUserNotificationSettings(authReq.user.id, settings);
+      
+      res.json({ 
+        message: 'Configuración de notificaciones actualizada exitosamente',
+        settings 
+      });
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+
+  // Endpoint para obtener configuración de notificaciones
+  app.get('/api/notifications/settings', authenticateToken, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      
+      const settings = await dbStorage.getUserNotificationSettings(authReq.user.id);
+      
+      res.json(settings || {
+        // Configuración por defecto
+        soatExpiry: true,
+        soatExpiryDays: 30,
+        technicalInspection: true,
+        technicalInspectionDays: 30,
+        lowStock: true,
+        lowStockThreshold: 10,
+        orderUpdates: true,
+        orderStatusChanges: true,
+        vehicleReminders: true,
+        maintenanceReminders: true,
+        systemAlerts: true,
+        securityAlerts: true,
+        emailNotifications: true,
+        pushNotifications: true,
+        quietHours: false,
+        quietHoursStart: "22:00",
+        quietHoursEnd: "08:00"
+      });
+    } catch (error) {
+      console.error('Error getting notification settings:', error);
       res.status(500).json({ message: 'Error interno del servidor' });
     }
   });

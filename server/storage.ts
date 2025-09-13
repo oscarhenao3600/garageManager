@@ -14,7 +14,7 @@ import {
 
 // Las tablas se usan directamente sin alias
 import { db } from "./db";
-import { eq, like, or, and, count, desc, asc, lte, gte, sql, isNull } from "drizzle-orm";
+import { eq, like, or, and, count, desc, asc, lte, gte, sql, isNull, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Company Settings
@@ -71,6 +71,7 @@ export interface IStorage {
   // Operator specific queries
   getOperatorAssignedOrders(operatorId: number): Promise<ServiceOrder[]>;
   getServiceOrdersByOperator(operatorId: number): Promise<ServiceOrder[]>;
+  getAvailableOrdersForOperator(operatorId: number): Promise<ServiceOrder[]>;
 
   // Clients - Tabla separada
   getClients(params: { search?: string; limit?: number }): Promise<Client[]>;
@@ -101,6 +102,8 @@ export interface IStorage {
   getNotificationsForAdmins(category?: string): Promise<any[]>;
   getNotificationResponses(notificationId: number): Promise<any[]>;
   getNotificationById(id: number): Promise<Notification | undefined>;
+  updateUserNotificationSettings(userId: number, settings: any): Promise<void>;
+  getUserNotificationSettings(userId: number): Promise<any>;
 
   // Invoices
   getInvoices(params: { status?: string; limit?: number; fromDate?: Date; toDate?: Date }): Promise<Invoice[]>;
@@ -394,92 +397,12 @@ export class DatabaseStorage implements IStorage {
     console.log('🔍 Storage: getServiceOrders called with params:', params);
 
     try {
-      let query = db
-        .select({
-          id: serviceOrders.id,
-          orderNumber: serviceOrders.orderNumber,
-          description: serviceOrders.description,
-          status: serviceOrders.status,
-          priority: serviceOrders.priority,
-          estimatedTime: serviceOrders.estimatedTime,
-          actualTime: serviceOrders.actualTime,
-          startDate: serviceOrders.startDate,
-          completionDate: serviceOrders.completionDate,
-          createdAt: serviceOrders.createdAt,
-          clientId: serviceOrders.clientId,
-          vehicleId: serviceOrders.vehicleId,
-          operatorId: serviceOrders.operatorId,
-          client: {
-            id: users.id,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            documentNumber: users.documentNumber,
-          },
-          vehicle: {
-            id: vehicles.id,
-            plate: vehicles.plate,
-            brand: vehicles.brand,
-            model: vehicles.model,
-            year: vehicles.year,
-          }
-        })
+      const result = await db
+        .select()
         .from(serviceOrders)
-        .leftJoin(users, eq(serviceOrders.clientId, users.id))
-        .leftJoin(vehicles, eq(serviceOrders.vehicleId, vehicles.id));
+        .limit(params.limit || 50)
+        .orderBy(desc(serviceOrders.createdAt));
 
-    // Filtrar por rol del usuario
-    
-    if ((params.userRole === 'user' || params.userRole === 'client') && params.userId) {
-      
-      // Los clientes solo pueden ver órdenes donde son el cliente (clientId = userId)
-      // o órdenes de sus propios vehículos
-      const clientVehicles = await db
-        .select({ id: vehicles.id })
-        .from(vehicles)
-        .where(eq(vehicles.clientId, params.userId));
-      
-      const vehicleIds = clientVehicles.map(v => v.id);
-      
-      if (vehicleIds.length > 0) {
-        // Filtrar por clientId (usuario actual) O por vehicleId (vehículos del usuario)
-        query = query.where(
-          or(
-            eq(serviceOrders.clientId, params.userId),
-            sql`${serviceOrders.vehicleId} IN (${sql.join(vehicleIds.map(id => sql`${id}`), sql`, `)})`
-          )
-        );
-      } else {
-        // Si el cliente no tiene vehículos, solo puede ver órdenes donde es el cliente
-        query = query.where(eq(serviceOrders.clientId, params.userId));
-      }
-    } else if (params.userRole === 'operator' && params.userId) {
-      // Los operarios solo pueden ver órdenes asignadas a ellos
-      query = query.where(eq(serviceOrders.operatorId, params.userId));
-    }
-
-    // Filtrar por estado
-    if (params.status) {
-      if (params.status === 'active' && (params.userRole === 'user' || params.userRole === 'client')) {
-        // Para clientes, 'active' significa órdenes pendientes o en proceso
-        query = query.where(
-          or(
-            eq(serviceOrders.status, 'pending'),
-            eq(serviceOrders.status, 'in_progress')
-          )
-        );
-      } else {
-        // Para otros roles, filtro normal por estado
-        query = query.where(eq(serviceOrders.status, params.status));
-      }
-    }
-
-    query.orderBy(desc(serviceOrders.createdAt));
-
-    if (params.limit) {
-      query.limit(params.limit);
-    }
-
-      const result = await query;
       console.log('🔍 Storage: getServiceOrders result:', result.length, 'orders found');
       return result;
     } catch (error) {
@@ -1085,6 +1008,62 @@ export class DatabaseStorage implements IStorage {
     return notification;
   }
 
+  async updateUserNotificationSettings(userId: number, settings: any): Promise<void> {
+    try {
+      // Por ahora guardamos en una tabla simple de configuración
+      // En el futuro se puede crear una tabla específica para configuraciones de usuario
+      await db.execute(sql`
+        INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at)
+        VALUES (${userId}, 'notification_settings', ${JSON.stringify(settings)}, NOW())
+        ON CONFLICT (user_id, setting_key) 
+        DO UPDATE SET setting_value = ${JSON.stringify(settings)}, updated_at = NOW()
+      `);
+    } catch (error) {
+      console.error('Error updating user notification settings:', error);
+      // Si no existe la tabla, la creamos
+      try {
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS user_settings (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            setting_key TEXT NOT NULL,
+            setting_value JSONB NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(user_id, setting_key)
+          )
+        `);
+        // Intentar de nuevo
+        await db.execute(sql`
+          INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at)
+          VALUES (${userId}, 'notification_settings', ${JSON.stringify(settings)}, NOW())
+          ON CONFLICT (user_id, setting_key) 
+          DO UPDATE SET setting_value = ${JSON.stringify(settings)}, updated_at = NOW()
+        `);
+      } catch (createError) {
+        console.error('Error creating user_settings table:', createError);
+        throw createError;
+      }
+    }
+  }
+
+  async getUserNotificationSettings(userId: number): Promise<any> {
+    try {
+      const result = await db.execute(sql`
+        SELECT setting_value FROM user_settings 
+        WHERE user_id = ${userId} AND setting_key = 'notification_settings'
+      `);
+      
+      if (result.rows.length > 0) {
+        return result.rows[0].setting_value;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting user notification settings:', error);
+      return null;
+    }
+  }
+
   // Invoices
   async getInvoices(params: { status?: string; limit?: number; fromDate?: Date; toDate?: Date }): Promise<Invoice[]> {
     try {
@@ -1546,6 +1525,53 @@ export class DatabaseStorage implements IStorage {
         .where(eq(serviceOrders.operatorId, operatorId))
         .orderBy(desc(serviceOrders.createdAt));
     } catch (error) {
+      return [];
+    }
+  }
+
+  async getAvailableOrdersForOperator(operatorId: number): Promise<ServiceOrder[]> {
+    try {
+      return await db
+        .select({
+          id: serviceOrders.id,
+          orderNumber: serviceOrders.orderNumber,
+          description: serviceOrders.description,
+          status: serviceOrders.status,
+          priority: serviceOrders.priority,
+          estimatedTime: serviceOrders.estimatedTime,
+          actualTime: serviceOrders.actualTime,
+          startDate: serviceOrders.startDate,
+          completionDate: serviceOrders.completionDate,
+          createdAt: serviceOrders.createdAt,
+          clientId: serviceOrders.clientId,
+          vehicleId: serviceOrders.vehicleId,
+          operatorId: serviceOrders.operatorId,
+          client: {
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            documentNumber: users.documentNumber,
+          },
+          vehicle: {
+            id: vehicles.id,
+            plate: vehicles.plate,
+            brand: vehicles.brand,
+            model: vehicles.model,
+            year: vehicles.year,
+          }
+        })
+        .from(serviceOrders)
+        .leftJoin(users, eq(serviceOrders.clientId, users.id))
+        .leftJoin(vehicles, eq(serviceOrders.vehicleId, vehicles.id))
+        .where(
+          and(
+            eq(serviceOrders.status, 'pending'),
+            isNull(serviceOrders.operatorId)
+          )
+        )
+        .orderBy(desc(serviceOrders.priority), desc(serviceOrders.createdAt));
+    } catch (error) {
+      console.error('Error getting available orders for operator:', error);
       return [];
     }
   }

@@ -345,41 +345,6 @@ export default function Clients() {
           </div>
         </div>
 
-        {/* Botón flotante para ir al inicio */}
-        {filteredClients.length > 12 && (
-          <div className="fixed bottom-6 right-6 z-50">
-            <Button
-              onClick={() => {
-                const gridElement = document.querySelector('.grid.overflow-y-auto');
-                if (gridElement) {
-                  gridElement.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-12 h-12 p-0 shadow-lg"
-              title="Ir al inicio de la lista"
-            >
-              ↑
-            </Button>
-          </div>
-        )}
-
-        {/* Botón de prueba de scroll */}
-        {filteredClients.length > 6 && (
-          <div className="fixed bottom-6 left-6 z-50">
-            <Button
-              onClick={() => {
-                const gridElement = document.querySelector('.grid.overflow-y-auto');
-                if (gridElement) {
-                  gridElement.scrollTo({ top: gridElement.scrollHeight, behavior: 'smooth' });
-                }
-              }}
-              className="bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 p-0 shadow-lg"
-              title="Ir al final de la lista"
-            >
-              ↓
-            </Button>
-          </div>
-        )}
       </div>
 
       <NewClientModal 

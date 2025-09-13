@@ -22,10 +22,14 @@ import Topbar from "@/components/layout/topbar";
 import FirstLoginModal from "@/components/FirstLoginModal";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
+  
+  // Inicializar WebSocket
+  const { isConnected, connectionError } = useWebSocket();
 
   // Usar el hook para cargar y aplicar las imágenes del taller globalmente
   useTallerImages();

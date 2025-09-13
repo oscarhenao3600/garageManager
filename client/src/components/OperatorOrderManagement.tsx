@@ -263,94 +263,99 @@ export default function OperatorOrderManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wrench className="h-5 w-5" />
-            Gestión de Órdenes de Servicio
-          </CardTitle>
-          <CardDescription>
-            Gestiona las órdenes asignadas y toma nuevas órdenes disponibles
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Pestañas para navegar entre órdenes asignadas y disponibles */}
-          <div className="flex space-x-1 mb-6">
-            <Button
-              variant={activeTab === 'assigned' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('assigned')}
-              className="flex-1"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mis Órdenes Asignadas ({assignedOrders?.length || 0})
-            </Button>
-            <Button
-              variant={activeTab === 'available' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('available')}
-              className="flex-1"
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              Órdenes Disponibles ({availableOrders?.length || 0})
-            </Button>
+    <>
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Mis Órdenes</h1>
+            <p className="text-gray-600">Gestiona las órdenes asignadas y toma nuevas órdenes disponibles</p>
           </div>
+        </div>
 
-          {/* Contenido de las pestañas */}
-          {activeTab === 'assigned' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Órdenes Asignadas a Mí</h3>
-              {assignedOrders && assignedOrders.length > 0 ? (
-                <div className="grid gap-4">
-                  {assignedOrders.map((order: ServiceOrder) => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      onTakeOrder={() => {}} // No se puede tomar una orden ya asignada
-                      onReleaseOrder={() => handleReleaseOrder(order.id)}
-                      onViewHistory={() => handleViewStatusHistory(order)}
-                      onViewVehicleHistory={() => handleViewVehicleHistory(order.vehicle?.plate || '')}
-                      showTakeButton={false}
-                      showReleaseButton={true}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Wrench className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No tienes órdenes asignadas actualmente</p>
-                </div>
-              )}
+        {/* Pestañas para navegar entre órdenes asignadas y disponibles */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex space-x-1 mb-6">
+              <Button
+                variant={activeTab === 'assigned' ? 'default' : 'outline'}
+                onClick={() => setActiveTab('assigned')}
+                className="flex-1"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Mis Órdenes Asignadas ({assignedOrders?.length || 0})
+              </Button>
+              <Button
+                variant={activeTab === 'available' ? 'default' : 'outline'}
+                onClick={() => setActiveTab('available')}
+                className="flex-1"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Órdenes Disponibles ({availableOrders?.length || 0})
+              </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Orders List - Usando la misma estructura que orders.tsx */}
+        <div className="grid grid-cols-1 gap-4 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+          {activeTab === 'assigned' && (
+            <>
+              {assignedOrders && assignedOrders.length > 0 ? (
+                assignedOrders.map((order: ServiceOrder) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    onTakeOrder={() => {}} // No se puede tomar una orden ya asignada
+                    onReleaseOrder={() => handleReleaseOrder(order.id)}
+                    onViewHistory={() => handleViewStatusHistory(order)}
+                    onViewVehicleHistory={() => handleViewVehicleHistory(order.vehicle?.plate || '')}
+                    showTakeButton={false}
+                    showReleaseButton={true}
+                  />
+                ))
+              ) : (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <div className="space-y-4">
+                      <Wrench className="h-12 w-12 mx-auto text-gray-400" />
+                      <p className="text-gray-500 text-lg">No tienes órdenes asignadas actualmente</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
 
           {activeTab === 'available' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Órdenes Disponibles para Tomar</h3>
+            <>
               {availableOrders && availableOrders.length > 0 ? (
-                <div className="grid gap-4">
-                  {availableOrders.map((order: ServiceOrder) => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      onTakeOrder={() => handleTakeOrder(order.id)}
-                      onReleaseOrder={() => {}} // No se puede liberar una orden no tomada
-                      onViewHistory={() => {}} // No hay historial para órdenes no tomadas
-                      onViewVehicleHistory={() => {}} // No hay acceso al historial del vehículo
-                      showTakeButton={true}
-                      showReleaseButton={false}
-                    />
-                  ))}
-                </div>
+                availableOrders.map((order: ServiceOrder) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    onTakeOrder={() => handleTakeOrder(order.id)}
+                    onReleaseOrder={() => {}} // No se puede liberar una orden no tomada
+                    onViewHistory={() => {}} // No hay historial para órdenes no tomadas
+                    onViewVehicleHistory={() => {}} // No hay acceso al historial del vehículo
+                    showTakeButton={true}
+                    showReleaseButton={false}
+                  />
+                ))
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No hay órdenes disponibles para tomar</p>
-                </div>
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <div className="space-y-4">
+                      <Clock className="h-12 w-12 mx-auto text-gray-400" />
+                      <p className="text-gray-500 text-lg">No hay órdenes disponibles para tomar</p>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-            </div>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Dialog para tomar orden */}
       <Dialog open={showTakeDialog} onOpenChange={setShowTakeDialog}>
@@ -544,7 +549,7 @@ export default function OperatorOrderManagement() {
         orderNumber={selectedOrder?.orderNumber}
         orderDescription={selectedOrder?.description}
       />
-    </div>
+    </>
   );
 }
 
